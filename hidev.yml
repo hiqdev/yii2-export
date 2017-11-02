@@ -1,0 +1,16 @@
+package:
+    type:           yii2-extension
+    name:           yii2-export
+    title:          Data exporting to different formats for Yii2
+    headline:       Yii2 Export
+    keywords:       yii2, export, csv, excel, html, pdf
+    description:    |
+        Provides data exporting facilities:
+
+        - widget
+        - ...
+
+        Supports export to following formats:
+        - CSV, TSV
+        - Excel
+        - ...
