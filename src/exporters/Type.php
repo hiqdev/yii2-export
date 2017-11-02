@@ -1,8 +1,8 @@
 <?php
 
-namespace hiqdev\yii2\export;
+namespace hiqdev\yii2\export\exporters;
 
-interface ExporterType
+interface Type
 {
     const CSV = 'csv';
     const TSV = 'tsv';

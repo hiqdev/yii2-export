@@ -2,9 +2,6 @@
 
 namespace hiqdev\yii2\export\exporters;
 
-use hiqdev\yii2\export\AbstractExporter;
-use hiqdev\yii2\export\ExporterInterface;
-
 class XLSXExporter extends AbstractExporter implements ExporterInterface
 {
 
@@ -13,7 +10,7 @@ class XLSXExporter extends AbstractExporter implements ExporterInterface
      *
      * @return string
      */
-    public function render()
+    public function export()
     {
         // TODO: Implement render() method.
     }

@@ -1,6 +1,6 @@
 <?php
 
-namespace hiqdev\yii2\export;
+namespace hiqdev\yii2\export\exporters;
 
 interface ExporterInterface
 {
@@ -9,6 +9,6 @@ interface ExporterInterface
      *
      * @return string
      */
-    public function render();
+    public function export();
 }
 

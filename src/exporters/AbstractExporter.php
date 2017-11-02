@@ -1,6 +1,6 @@
 <?php
 
-namespace hiqdev\yii2\export;
+namespace hiqdev\yii2\export\exporters;
 
 abstract class AbstractExporter
 {
