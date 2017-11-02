@@ -2,36 +2,38 @@
 
 namespace hiqdev\yii2\export\actions;
 
+use hiqdev\yii2\export\exporters\Type;
+use hiqdev\yii2\export\models\CsvSettings;
 use hipanel\actions\IndexAction;
-use hiqdev\yii2\export\ExporterFactory;
 use Yii;
 
 class ExportAction extends IndexAction
 {
     public function run()
     {
-        return Yii::$app->response->sendContentAsFile($this->getExporter()->render(), $this->getFileName());
+        $type = $this->getType();
+        $exporter = $this->exporterFactory->build($type);
+        $settings = $this->loadSettings($type);
+        if ($settings !== null) {
+            $settings->applyTo($exporter);
+        }
+
+        return Yii::$app->response->sendContentAsFile($exporter->export($this->getDataProvider()), $exporter->getFileName());
     }
 
-    protected function getExporter()
-    {
-        return ExporterFactory::createExporter($this->getFormat(), $this->getOptions());
-    }
-
-    protected function getFormat()
+    protected function getType()
     {
         return Yii::$app->request->get('format');
     }
 
-    protected function getOptions()
+    public function loadSettings($type)
     {
-        return [
-            'dataProvider' => $this->getDataProvider(),
-        ];
-    }
+        $map = [Type::CSV => CsvSettings::class];
 
-    protected function getFileName()
-    {
-        return mt_rand();
+        $settings = new $map[$type];
+        $settings->load();
+        $settings->validate();
+
+        return $settings;
     }
 }

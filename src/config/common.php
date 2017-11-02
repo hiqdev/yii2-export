@@ -8,4 +8,25 @@
  * @copyright Copyright (c) 2017, HiQDev (http://hiqdev.com/)
  */
 
-return [];
+return [
+    'container' => [
+        'definitions' => [
+            \hiqdev\yii2\export\exporters\ExporterFactoryInterface::class => [
+                ['class' => \hiqdev\yii2\export\exporters\ExporterFactory::class],
+                [
+                    \hiqdev\yii2\export\exporters\Type::CSV => \hiqdev\yii2\export\exporters\CsvExporter::class,
+                    \hiqdev\yii2\export\exporters\Type::TSV => \hiqdev\yii2\export\exporters\TsvExporter::class,
+                ],
+            ],
+            \hiqdev\yii2\export\exporters\CsvExporter::class => [
+                ['class' => \hiqdev\yii2\export\exporters\CsvExporter::class],
+                [
+                    [
+                        'delimiter' => ';',
+                        'newline' => "\r\n",
+                    ],
+                ],
+            ],
+        ],
+    ],
+];

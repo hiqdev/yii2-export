@@ -2,7 +2,7 @@
 
 namespace hiqdev\yii2\export\exporters;
 
-class CSVExporter extends AbstractExporter implements ExporterInterface
+class TsvExporter extends AbstractExporter implements ExporterInterface
 {
 
     /**

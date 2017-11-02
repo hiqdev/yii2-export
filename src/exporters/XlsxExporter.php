@@ -2,7 +2,7 @@
 
 namespace hiqdev\yii2\export\exporters;
 
-class XLSXExporter extends AbstractExporter implements ExporterInterface
+class XlsxExporter extends AbstractExporter implements ExporterInterface
 {
 
     /**

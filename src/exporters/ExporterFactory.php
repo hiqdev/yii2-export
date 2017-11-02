@@ -2,19 +2,22 @@
 
 namespace hiqdev\yii2\export\exporters;
 
-class ExporterFactory implements Type
-{
-    public static function create($format, $options)
-    {
-        switch ($format) {
-            case Type::CSV:
-                return new CSVExporter($options);
-            case Type::TSV:
-                return new TSVExporter($options);
-            case Type::XLSX:
-                return new XLSXExporter($options);
-        }
+use yii\di\Container;
 
-        throw new \InvalidArgumentException('Unknown export format given');
+class ExporterFactory implements ExporterFactoryInterface
+{
+    protected $map;
+
+    protected $di;
+
+    public function __construct($map, Container $di)
+    {
+        $this->map = $map;
+        $this->di = $di;
+    }
+
+    public function build($type)
+    {
+        return $this->di->get($this->map[$type]);
     }
 }
