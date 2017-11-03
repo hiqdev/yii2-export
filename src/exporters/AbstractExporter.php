@@ -10,4 +10,15 @@ abstract class AbstractExporter
     {
         $this->options = $options;
     }
+
+    /**
+     * Prevention execution code on an administrator’s machine in their user’s security context.
+     *
+     * @param string $row
+     * @return string
+     */
+    protected function sanitizeRow(string $row)
+    {
+        return ltrim($row, '=+-@');
+    }
 }
