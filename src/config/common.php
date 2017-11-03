@@ -14,8 +14,10 @@ return [
             \hiqdev\yii2\export\exporters\ExporterFactoryInterface::class => [
                 ['class' => \hiqdev\yii2\export\exporters\ExporterFactory::class],
                 [
-                    \hiqdev\yii2\export\exporters\Type::CSV => \hiqdev\yii2\export\exporters\CsvExporter::class,
-                    \hiqdev\yii2\export\exporters\Type::TSV => \hiqdev\yii2\export\exporters\TsvExporter::class,
+                    [
+                        \hiqdev\yii2\export\exporters\Type::CSV => \hiqdev\yii2\export\exporters\CsvExporter::class,
+                        \hiqdev\yii2\export\exporters\Type::TSV => \hiqdev\yii2\export\exporters\TsvExporter::class,
+                    ],
                 ],
             ],
             \hiqdev\yii2\export\exporters\CsvExporter::class => [
