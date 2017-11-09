@@ -6,7 +6,6 @@ use hiqdev\yii2\export\exporters\Type;
 use Yii;
 use yii\base\Widget;
 use yii\bootstrap\ButtonDropdown;
-use yii\helpers\Url;
 
 class IndexPageExportLinks extends Widget
 {
@@ -15,7 +14,7 @@ class IndexPageExportLinks extends Widget
     public function run()
     {
         return ButtonDropdown::widget([
-            'label' => '<i class="fa fa-share-square-o"></i>&nbsp;' . Yii::t('hipanel', 'Export'),
+            'label' => '<i class="fa fa-share-square-o"></i>&nbsp;' . Yii::t('hiqdev.export', 'Export'),
             'encodeLabel' => false,
             'options' => ['class' => 'btn-default btn-sm'],
             'dropdown' => [
@@ -31,17 +30,17 @@ class IndexPageExportLinks extends Widget
         return [
             [
                 'url' => array_merge(['export', 'format' => Type::CSV], $currentParams),
-                'label' => '<i class="fa fa-file-code-o"></i>' . Yii::t('hipanel', 'CSV'),
+                'label' => '<i class="fa fa-file-code-o"></i>' . Yii::t('hiqdev.export', 'CSV'),
                 'encode' => false,
             ],
             [
                 'url' => array_merge(['export', 'format' => Type::TSV], $currentParams),
-                'label' => '<i class="fa fa-file-code-o"></i>' . Yii::t('hipanel', 'TSV'),
+                'label' => '<i class="fa fa-file-code-o"></i>' . Yii::t('hiqdev.export', 'TSV'),
                 'encode' => false,
             ],
             [
                 'url' => array_merge(['export', 'format' => Type::XLSX], $currentParams),
-                'label' => '<i class="fa fa-file-excel-o"></i>' . Yii::t('hipanel', 'Excel XLSX'),
+                'label' => '<i class="fa fa-file-excel-o"></i>' . Yii::t('hiqdev.export', 'Excel XLSX'),
                 'encode' => false,
             ],
         ];

@@ -9,6 +9,16 @@
  */
 
 return [
+    'components' => [
+        'i18n' => [
+            'translations' => [
+                'hiqdev.export' => [
+                    'class' => \yii\i18n\PhpMessageSource::class,
+                    'basePath' => '@hiqdev/yii2/export/messages',
+                ],
+            ],
+        ],
+    ],
     'container' => [
         'definitions' => [
             \hiqdev\yii2\export\exporters\ExporterFactoryInterface::class => [

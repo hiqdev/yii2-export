@@ -46,7 +46,7 @@
         }
     ],
     "require": {
-        "yii2tech/csv-grid": "*"
+        "box/spout": "~2.7"
     },
     "require-dev": {
         "hiqdev/hidev-php": "<2.0",

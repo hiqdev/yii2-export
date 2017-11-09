@@ -2,27 +2,18 @@
 
 namespace hiqdev\yii2\export\exporters;
 
-use hipanel\modules\domain\grid\DomainGridView;
+use yii\base\BaseObject;
 use yii\grid\DataColumn;
-use yii\data\ActiveDataProvider;
 use yii\db\ActiveQueryInterface;
 use yii\grid\ActionColumn;
 use yii\grid\CheckboxColumn;
 use yii\grid\Column;
 
-abstract class AbstractExporter extends \hipanel\grid\GridView
+abstract class AbstractExporter extends BaseObject
 {
     use GridViewTrait;
 
-    /**
-     * @var ActiveDataProvider dataProvider
-     */
-    public $dataProvider;
-
-    /**
-     * @var array of columns
-     */
-    public $columns;
+    public $grid;
 
     /**
      * @var bool whether to export footer or not
@@ -63,15 +54,13 @@ abstract class AbstractExporter extends \hipanel\grid\GridView
         }
     }
 
-    public function initExportOptions($dataProvider, $columns)
+    public function initExportOptions($columns)
     {
         $columns = array_diff($columns, ['checkbox', 'actions']);
-        $givenGridView = new DomainGridView(['dataProvider' => $dataProvider, 'columns' => $columns]);
-        $dataProvider->pagination->setPageSize(999999);
-        $columns = array_intersect_key($givenGridView->columns(), array_flip($columns));
+        $columns = array_intersect_key($this->grid->columns(), array_flip($columns));
+        $this->grid->dataProvider->pagination->setPageSize(999999);
+        $this->grid->columns = $columns;
 
-        $this->dataProvider = $dataProvider;
-        $this->columns = $columns;
         $this->initColumns();
     }
 
@@ -91,7 +80,6 @@ abstract class AbstractExporter extends \hipanel\grid\GridView
         $this->settings = $settings;
     }
 
-
     /**
      * Generate the row array
      *
@@ -99,15 +87,15 @@ abstract class AbstractExporter extends \hipanel\grid\GridView
      */
     protected function generateHeader()
     {
-        if (empty($this->columns)) {
+        if (empty($this->grid->columns)) {
             return;
         }
 
         $rows = [];
-        foreach ($this->columns as $column) {
+        foreach ($this->grid->columns as $column) {
             /** @var Column $column */
             $head = ($column instanceof DataColumn) ? $this->getColumnHeader($column) : $column->header;
-            $rows[] = strip_tags($head);
+            $rows[] = $this->sanitizeRow($head);
         }
 
         return $rows;
@@ -121,13 +109,13 @@ abstract class AbstractExporter extends \hipanel\grid\GridView
      */
     protected function generateBody()
     {
-        if (empty($this->columns)) {
+        if (empty($this->grid->columns)) {
             return;
         }
 
         $rows = [];
-        if ($this->dataProvider instanceof ActiveQueryInterface) {
-            $query = $this->dataProvider->query;
+        if ($this->grid->dataProvider instanceof ActiveQueryInterface) {
+            $query = $this->grid->dataProvider->query;
             foreach ($query->batch($this->batchSize) as $models) {
                 /**
                  * @var int $index
@@ -139,22 +127,22 @@ abstract class AbstractExporter extends \hipanel\grid\GridView
                 }
             }
         } else {
-            $models = $this->dataProvider->getModels();
+            $models = $this->grid->dataProvider->getModels();
             while (count($models) > 0) {
                 /**
                  * @var int $index
                  * @var \yii\db\ActiveRecord $model
                  */
-                $keys = $this->dataProvider->getKeys();
+                $keys = $this->grid->dataProvider->getKeys();
                 foreach ($models as $index => $model) {
                     $key = $keys[$index];
                     $rows[] = $this->generateRow($model, $key, $index);
                 }
 
-                if ($this->dataProvider->pagination) {
-                    $this->dataProvider->pagination->page++;
-                    $this->dataProvider->refresh();
-                    $models = $this->dataProvider->getModels();
+                if ($this->grid->dataProvider->pagination) {
+                    $this->grid->dataProvider->pagination->page++;
+                    $this->grid->dataProvider->refresh();
+                    $models = $this->grid->dataProvider->getModels();
                 } else {
                     $models = [];
                 }
@@ -175,7 +163,7 @@ abstract class AbstractExporter extends \hipanel\grid\GridView
     protected function generateRow($model, $key, $index)
     {
         $row = [];
-        foreach ($this->columns as $column) {
+        foreach ($this->grid->columns as $column) {
             $value = $this->getColumnValue($model, $key, $index, $column);
             $row[] = $this->sanitizeRow($value);
         }
@@ -217,14 +205,14 @@ abstract class AbstractExporter extends \hipanel\grid\GridView
             return;
         }
 
-        if (empty($this->columns)) {
+        if (empty($this->grid->columns)) {
             return;
         }
 
         $rows = [];
-        foreach ($this->columns as $n => $column) {
+        foreach ($this->grid->columns as $n => $column) {
             /** @var Column $column */
-            $rows[] = trim($column->footer) !== '' ? $column->footer : '';
+            $rows[] = $column->footer !== '' ? $this->sanitizeRow($column->footer) : '';
         }
 
         return $rows;
@@ -233,14 +221,19 @@ abstract class AbstractExporter extends \hipanel\grid\GridView
     /**
      * Prevention execution code on an administrator’s machine in their user’s security context.
      *
-     * @param string $value
-     * @return string
+     * @param string|null $value
+     * @return string|null
      */
-    protected function sanitizeRow(string $value)
+    protected function sanitizeRow($value)
     {
-        $value = strip_tags($value);
+        if ($value) {
+            $value = strip_tags($value);
+            $value = str_replace('&nbsp;', '', $value);
 
-        return ltrim($value, '=+-@');
+            return ltrim($value, '=+-@');
+        }
+
+        return null;
     }
 
 
