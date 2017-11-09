@@ -2,9 +2,11 @@
 
 namespace hiqdev\yii2\export\widgets;
 
+use hiqdev\yii2\export\exporters\Type;
 use Yii;
 use yii\base\Widget;
 use yii\bootstrap\ButtonDropdown;
+use yii\helpers\Url;
 
 class IndexPageExportLinks extends Widget
 {
@@ -24,17 +26,29 @@ class IndexPageExportLinks extends Widget
 
     protected function getItems()
     {
+        $currentParams = $this->getCurrentParams();
+
         return [
             [
-                'url' => ['export', 'format' => 'csv'],
+                'url' => array_merge(['export', 'format' => Type::CSV], $currentParams),
                 'label' => '<i class="fa fa-file-code-o"></i>' . Yii::t('hipanel', 'CSV'),
                 'encode' => false,
             ],
             [
-                'url' => ['export', 'format' => 'tsv'],
+                'url' => array_merge(['export', 'format' => Type::TSV], $currentParams),
                 'label' => '<i class="fa fa-file-code-o"></i>' . Yii::t('hipanel', 'TSV'),
                 'encode' => false,
             ],
+            [
+                'url' => array_merge(['export', 'format' => Type::XLSX], $currentParams),
+                'label' => '<i class="fa fa-file-excel-o"></i>' . Yii::t('hipanel', 'Excel XLSX'),
+                'encode' => false,
+            ],
         ];
+    }
+
+    protected function getCurrentParams()
+    {
+        return Yii::$app->getRequest()->getQueryParams();
     }
 }

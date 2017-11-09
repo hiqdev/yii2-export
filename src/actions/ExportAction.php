@@ -6,6 +6,8 @@ use hiqdev\yii2\export\exporters\ExporterFactoryInterface;
 use hiqdev\yii2\export\exporters\Type;
 use hiqdev\yii2\export\models\CsvSettings;
 use hipanel\actions\IndexAction;
+use hiqdev\yii2\export\models\TsvSettings;
+use hiqdev\yii2\export\models\XlsxSettings;
 use Yii;
 
 class ExportAction extends IndexAction
@@ -25,12 +27,16 @@ class ExportAction extends IndexAction
     {
         $type = $this->getType();
         $exporter = $this->exporterFactory->build($type);
-//        $settings = $this->loadSettings($type);
-//        if ($settings !== null) {
-//            $settings->applyTo($exporter);
-//        }
+        $settings = $this->loadSettings($type);
+        if ($settings !== null) {
+            $settings->applyTo($exporter);
+        }
+        $columns = $this->ensureRepresentationCollection()->getByName($this->controller->indexPageUiOptionsModel->representation)->getColumns();
 
-        return Yii::$app->response->sendContentAsFile($exporter->export($this->getDataProvider()), $exporter->getFileName());
+        $result = $exporter->export($this->getDataProvider(), $columns);
+        $filename = $exporter->filename . '.' . $type;
+
+        return Yii::$app->response->sendContentAsFile($result, $filename);
     }
 
     protected function getType()
@@ -40,13 +46,17 @@ class ExportAction extends IndexAction
 
     public function loadSettings($type)
     {
-        // todo
-        $map = [Type::CSV => CsvSettings::class];
+        $map = [
+            Type::CSV => CsvSettings::class,
+            Type::TSV => TsvSettings::class,
+            Type::XLSX => XlsxSettings::class,
+        ];
 
-        $settings = new $map[$type];
-        $settings->load([], '');
-        $settings->validate();
+        $settings = Yii::createObject($map[$type]);
+        if ($settings->load(Yii::$app->request->get(), '') && $settings->validate()) {
+            return $settings;
+        }
 
-        return $settings;
+        return null;
     }
 }

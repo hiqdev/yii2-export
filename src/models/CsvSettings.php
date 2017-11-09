@@ -4,9 +4,19 @@ namespace hiqdev\yii2\export\models;
 
 class CsvSettings extends \yii\base\Model
 {
-    public $csvFileConfig = [
-        'cellDelimiter' => "\t",
-        'rowDelimiter' => "\n",
-        'enclosure' => '',
-    ];
+    use SettingsTrait;
+
+    public $fieldDelimiter = ",";
+
+    public $fieldEnclosure = '"';
+
+    /**
+     * @inheritdoc
+     */
+    public function rules()
+    {
+        return [
+            [['fieldDelimiter', 'fieldEnclosure'], 'string'],
+        ];
+    }
 }

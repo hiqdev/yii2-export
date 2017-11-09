@@ -17,15 +17,7 @@ return [
                     [
                         \hiqdev\yii2\export\exporters\Type::CSV => \hiqdev\yii2\export\exporters\CsvExporter::class,
                         \hiqdev\yii2\export\exporters\Type::TSV => \hiqdev\yii2\export\exporters\TsvExporter::class,
-                    ],
-                ],
-            ],
-            \hiqdev\yii2\export\exporters\CsvExporter::class => [
-                ['class' => \hiqdev\yii2\export\exporters\CsvExporter::class],
-                [
-                    [
-                        'delimiter' => ';',
-                        'newline' => "\r\n",
+                        \hiqdev\yii2\export\exporters\Type::XLSX => \hiqdev\yii2\export\exporters\XlsxExporter::class,
                     ],
                 ],
             ],

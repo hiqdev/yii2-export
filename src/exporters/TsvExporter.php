@@ -2,16 +2,6 @@
 
 namespace hiqdev\yii2\export\exporters;
 
-class TsvExporter extends AbstractExporter implements ExporterInterface
+class TsvExporter extends CsvExporter implements ExporterInterface
 {
-
-    /**
-     * Render file content
-     *
-     * @return string
-     */
-    public function export()
-    {
-        // TODO: Implement render() method.
-    }
 }
