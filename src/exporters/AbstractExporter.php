@@ -2,14 +2,13 @@
 
 namespace hiqdev\yii2\export\exporters;
 
-use yii\base\BaseObject;
 use yii\grid\DataColumn;
 use yii\db\ActiveQueryInterface;
 use yii\grid\ActionColumn;
 use yii\grid\CheckboxColumn;
 use yii\grid\Column;
 
-abstract class AbstractExporter extends BaseObject
+abstract class AbstractExporter
 {
     use GridViewTrait;
 
@@ -45,17 +44,16 @@ abstract class AbstractExporter extends BaseObject
     protected $settings = [];
 
     /**
-     * @inheritdoc
+     * Init
+     *
+     * @param $grid
+     * @param $columns
      */
-    public function init()
+    public function initExportOptions($grid, $columns)
     {
         if (empty($this->filename)) {
             $this->filename = 'report_' . time();
         }
-    }
-
-    public function initExportOptions($grid, $columns)
-    {
         $this->grid = $grid;
         $columns = array_diff($columns, ['checkbox', 'actions']);
         $columns = array_intersect_key($this->grid->columns(), array_flip($columns));
