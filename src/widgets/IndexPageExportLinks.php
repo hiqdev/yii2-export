@@ -30,16 +30,31 @@ class IndexPageExportLinks extends Widget
                 'url' => array_merge(['export', 'format' => Type::CSV], $currentParams),
                 'label' => '<i class="fa fa-file-code-o"></i>' . Yii::t('hiqdev.export', 'CSV'),
                 'encode' => false,
+                'linkOptions' => [
+                    'data' => [
+                        'pjax' => 0,
+                    ],
+                ],
             ],
             [
                 'url' => array_merge(['export', 'format' => Type::TSV], $currentParams),
                 'label' => '<i class="fa fa-file-code-o"></i>' . Yii::t('hiqdev.export', 'TSV'),
                 'encode' => false,
+                'linkOptions' => [
+                    'data' => [
+                        'pjax' => 0,
+                    ],
+                ],
             ],
             [
                 'url' => array_merge(['export', 'format' => Type::XLSX], $currentParams),
                 'label' => '<i class="fa fa-file-excel-o"></i>' . Yii::t('hiqdev.export', 'Excel XLSX'),
                 'encode' => false,
+                'linkOptions' => [
+                    'data' => [
+                        'pjax' => 0,
+                    ],
+                ],
             ],
         ];
     }
