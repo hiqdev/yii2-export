@@ -11,9 +11,9 @@ class XlsxExporter extends AbstractExporter implements ExporterInterface
      *
      * @return string
      */
-    public function export($dataProvider, $columns, $gird)
+    public function export($gird, $columns)
     {
-        $this->initExportOptions($dataProvider, $columns, $gird);
+        $this->initExportOptions($gird, $columns);
 
         $writer = WriterFactory::create(Type::XLSX);
         ob_start();

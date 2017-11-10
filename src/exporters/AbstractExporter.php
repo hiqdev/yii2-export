@@ -54,8 +54,9 @@ abstract class AbstractExporter extends BaseObject
         }
     }
 
-    public function initExportOptions($columns)
+    public function initExportOptions($grid, $columns)
     {
+        $this->grid = $grid;
         $columns = array_diff($columns, ['checkbox', 'actions']);
         $columns = array_intersect_key($this->grid->columns(), array_flip($columns));
         $this->grid->dataProvider->pagination->setPageSize(999999);
