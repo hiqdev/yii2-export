@@ -9,8 +9,6 @@ use yii\bootstrap\ButtonDropdown;
 
 class IndexPageExportLinks extends Widget
 {
-    public $representationCollection;
-
     public function run()
     {
         return ButtonDropdown::widget([
