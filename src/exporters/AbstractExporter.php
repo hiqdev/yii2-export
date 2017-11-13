@@ -57,6 +57,8 @@ abstract class AbstractExporter
         $this->grid = $grid;
         $columns = array_diff($columns, ['checkbox', 'actions']);
         $columns = array_intersect_key($this->grid->columns(), array_flip($columns));
+        $this->grid->dataProvider->pagination = false;
+//        $this->grid->dataProvider->pagination->setPageSize($this->grid->dataProvider->pagination->totalCount);
         $this->grid->columns = $columns;
 
         $this->initColumns();
@@ -126,16 +128,8 @@ abstract class AbstractExporter
             }
         } else {
             $models = $this->grid->dataProvider->query->limit('all')->all();
-            while (count($models) > 0) {
-                /**
-                 * @var int $index
-                 * @var \yii\db\ActiveRecord $model
-                 */
-                $keys = $this->grid->dataProvider->getKeys();
-                foreach ($models as $index => $model) {
-                    $key = $keys[$index];
-                    $rows[] = $this->generateRow($model, $key, $index);
-                }
+            foreach ($models as $index => $model) {
+                $rows[] = $this->generateRow($model, $model->id, $index);
             }
         }
 
