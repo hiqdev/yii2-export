@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'Export' => 'Експорт',
+    'Export' => 'Экспорт',
 ];
