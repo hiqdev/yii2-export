@@ -67,8 +67,11 @@ trait GridViewTrait
      * @see \yii\grid\GridView::getColumnHeader($col)
      * @inheritdoc
      */
-    public function getColumnHeader($col)
+    public function getColumnHeader($col, $attribute = null)
     {
+        if ($attribute) {
+            $col->attribute = $attribute;
+        }
         if ($col->header !== null || ($col->label === null && $col->attribute === null)) {
             return trim($col->header) !== '' ? $col->header : $col->grid->emptyCell;
         }

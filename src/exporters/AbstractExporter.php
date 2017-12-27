@@ -90,9 +90,13 @@ abstract class AbstractExporter
         }
 
         $rows = [];
-        foreach ($this->grid->columns as $column) {
+        foreach ($this->grid->columns as $attribute => $column) {
             /** @var Column $column */
-            $head = ($column instanceof DataColumn) ? $this->getColumnHeader($column) : $column->header;
+            if (($column instanceof DataColumn)) {
+                $head = $this->getColumnHeader($column, $attribute);
+            } else {
+                $head = $column->header;
+            }
             $rows[] = $this->sanitizeRow($head);
         }
 
