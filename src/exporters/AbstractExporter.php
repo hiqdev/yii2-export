@@ -56,9 +56,13 @@ abstract class AbstractExporter
         }
         $this->grid = $grid;
         $columns = array_diff($columns, ['checkbox', 'actions']);
-        $columns = array_intersect_key($this->grid->columns(), array_flip($columns));
-        $this->grid->columns = $columns;
+        $resultedColumns = array_intersect_key($this->grid->columns(), array_flip($columns));
+        uksort($resultedColumns, function ($a, $b) use ($columns) {
+            $columns = array_flip($columns);
 
+            return $columns[$a] - $columns[$b];
+        });
+        $this->grid->columns = $resultedColumns;
         $this->initColumns();
     }
 

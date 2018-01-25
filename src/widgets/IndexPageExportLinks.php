@@ -24,10 +24,11 @@ class IndexPageExportLinks extends Widget
     protected function getItems()
     {
         $currentParams = $this->getCurrentParams();
+        $uiRoute = Yii::$app->request->pathInfo;
 
         return [
             [
-                'url' => array_merge(['export', 'format' => Type::CSV], $currentParams),
+                'url' => array_merge(['export', 'format' => Type::CSV, 'route' => $uiRoute], $currentParams),
                 'label' => '<i class="fa fa-file-code-o"></i>' . Yii::t('hiqdev.export', 'CSV'),
                 'encode' => false,
                 'linkOptions' => [
@@ -37,7 +38,7 @@ class IndexPageExportLinks extends Widget
                 ],
             ],
             [
-                'url' => array_merge(['export', 'format' => Type::TSV], $currentParams),
+                'url' => array_merge(['export', 'format' => Type::TSV, 'route' => $uiRoute], $currentParams),
                 'label' => '<i class="fa fa-file-code-o"></i>' . Yii::t('hiqdev.export', 'TSV'),
                 'encode' => false,
                 'linkOptions' => [
@@ -47,7 +48,7 @@ class IndexPageExportLinks extends Widget
                 ],
             ],
             [
-                'url' => array_merge(['export', 'format' => Type::XLSX], $currentParams),
+                'url' => array_merge(['export', 'format' => Type::XLSX, 'route' => $uiRoute], $currentParams),
                 'label' => '<i class="fa fa-file-excel-o"></i>' . Yii::t('hiqdev.export', 'Excel XLSX'),
                 'encode' => false,
                 'linkOptions' => [
