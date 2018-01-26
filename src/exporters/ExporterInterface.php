@@ -12,6 +12,6 @@ interface ExporterInterface
      * @param array $columns
      * @return string
      */
-    public function export($grid, $columns);
+    public function export($grid);
 }
 

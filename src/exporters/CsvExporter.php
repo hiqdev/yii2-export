@@ -15,9 +15,9 @@ class CsvExporter extends AbstractExporter implements ExporterInterface
      * @param $columns
      * @return string
      */
-    public function export($gird, $columns)
+    public function export($gird)
     {
-        $this->initExportOptions($gird, $columns);
+        $this->initExportOptions($gird);
 
         $this->writer = WriterFactory::create(Type::CSV);
         $this->applySettings();

@@ -2,6 +2,7 @@
 
 namespace hiqdev\yii2\export\exporters;
 
+use hiqdev\yii2\menus\grid\MenuColumn;
 use yii\grid\DataColumn;
 use yii\db\ActiveQueryInterface;
 use yii\grid\ActionColumn;
@@ -49,21 +50,17 @@ abstract class AbstractExporter
      * @param $grid
      * @param $columns
      */
-    public function initExportOptions($grid, $columns)
+    public function initExportOptions($grid)
     {
         if (empty($this->filename)) {
             $this->filename = 'report_' . time();
         }
+        foreach ($grid->columns as $i => $column) {
+            if ($column instanceof CheckboxColumn || $column instanceof ActionColumn || $column instanceof MenuColumn) {
+                unset($grid->columns[$i]);
+            }
+        }
         $this->grid = $grid;
-        $columns = array_diff($columns, ['checkbox', 'actions']);
-        $resultedColumns = array_intersect_key($this->grid->columns(), array_flip($columns));
-        uksort($resultedColumns, function ($a, $b) use ($columns) {
-            $columns = array_flip($columns);
-
-            return $columns[$a] - $columns[$b];
-        });
-        $this->grid->columns = $resultedColumns;
-        $this->initColumns();
     }
 
     /**
@@ -186,7 +183,7 @@ abstract class AbstractExporter
         if ($column instanceof ActionColumn || $column instanceof CheckboxColumn) {
             return '';
         } else if ($column instanceof DataColumn) {
-            return $column->getDataCellValue($model, $key, $index);
+            return $this->grid->formatter->format($column->getDataCellValue($model, $key, $index), $column->format);
         } else if ($column instanceof Column) {
             return $column->renderDataCell($model, $key, $index);
         }
