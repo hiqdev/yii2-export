@@ -227,7 +227,7 @@ abstract class AbstractExporter
             $value = strip_tags($value);
             $value = str_replace('&nbsp;', '', $value);
 
-            return ltrim($value, '=+-@');
+            return ltrim($value, '=+');
         }
 
         return null;
