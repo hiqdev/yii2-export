@@ -4,5 +4,5 @@ namespace hiqdev\yii2\export\exporters;
 
 interface ExporterFactoryInterface
 {
-    public function build($type);
+    public function build($type): ExporterInterface;
 }

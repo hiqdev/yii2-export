@@ -16,7 +16,7 @@ class ExporterFactory implements ExporterFactoryInterface
         $this->di = $di;
     }
 
-    public function build($type)
+    public function build($type): ExporterInterface
     {
         return $this->di->get($this->map[$type]);
     }

@@ -3,6 +3,8 @@
 namespace hiqdev\yii2\export\exporters;
 
 use hiqdev\yii2\menus\grid\MenuColumn;
+use yii\db\ActiveRecord;
+use yii\db\Query;
 use yii\grid\DataColumn;
 use yii\db\ActiveQueryInterface;
 use yii\grid\ActionColumn;
@@ -48,9 +50,8 @@ abstract class AbstractExporter
      * Init
      *
      * @param $grid
-     * @param $columns
      */
-    public function initExportOptions($grid)
+    public function initExportOptions($grid): void
     {
         if (empty($this->filename)) {
             $this->filename = 'report_' . time();
@@ -74,7 +75,7 @@ abstract class AbstractExporter
     /**
      * @param array $settings
      */
-    public function setSettings(array $settings)
+    public function setSettings(array $settings): void
     {
         $this->settings = $settings;
     }
@@ -94,7 +95,7 @@ abstract class AbstractExporter
         foreach ($this->grid->columns as $attribute => $column) {
             /** @var Column $column */
             if (($column instanceof DataColumn)) {
-                $head = $this->getColumnHeader($column, $attribute);
+                $head = $this->getColumnHeader($column);
             } else {
                 $head = $column->header;
             }
@@ -118,11 +119,12 @@ abstract class AbstractExporter
 
         $rows = [];
         if ($this->grid->dataProvider instanceof ActiveQueryInterface) {
+            /** @var Query $query */
             $query = $this->grid->dataProvider->query;
             foreach ($query->batch($this->batchSize) as $models) {
                 /**
                  * @var int $index
-                 * @var \yii\db\ActiveRecord $model
+                 * @var ActiveRecord $model
                  */
                 foreach ($models as $index => $model) {
                     $key = $model->getPrimaryKey();
@@ -157,7 +159,7 @@ abstract class AbstractExporter
      * @param $index
      * @return array
      */
-    protected function generateRow($model, $key, $index)
+    protected function generateRow($model, $key, $index): array
     {
         $row = [];
         foreach ($this->grid->columns as $column) {
@@ -177,18 +179,26 @@ abstract class AbstractExporter
      * @param $column
      * @return string
      */
-    protected function getColumnValue($model, $key, $index, $column)
+    protected function getColumnValue($model, $key, $index, $column): ?string
     {
         /** @var Column $column */
         if ($column instanceof ActionColumn || $column instanceof CheckboxColumn) {
-            return '';
-        } else if ($column instanceof DataColumn) {
+            return null;
+        }
+
+        if ($column->exportedValue) {
+            $column->value = $column->exportedValue;
+        }
+
+        if ($column instanceof DataColumn) {
             return $this->grid->formatter->format($column->getDataCellValue($model, $key, $index), $column->format);
-        } else if ($column instanceof Column) {
+        }
+
+        if ($column instanceof Column) {
             return $column->renderDataCell($model, $key, $index);
         }
 
-        return '';
+        return null;
     }
 
     /**
@@ -221,11 +231,10 @@ abstract class AbstractExporter
      * @param string|null $value
      * @return string|null
      */
-    protected function sanitizeRow($value)
+    protected function sanitizeRow($value): ?string
     {
         if ($value) {
-            $value = strip_tags($value);
-            $value = str_replace('&nbsp;', '', $value);
+            $value = str_replace('&nbsp;', '', strip_tags($value));
 
             return ltrim($value, '=+');
         }
