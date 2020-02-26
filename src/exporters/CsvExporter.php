@@ -2,6 +2,9 @@
 
 namespace hiqdev\yii2\export\exporters;
 
+use Box\Spout\Common\Exception\IOException;
+use Box\Spout\Common\Exception\UnsupportedTypeException;
+use Box\Spout\Writer\Exception\WriterNotOpenedException;
 use Box\Spout\Writer\WriterFactory;
 
 class CsvExporter extends AbstractExporter implements ExporterInterface
@@ -11,11 +14,13 @@ class CsvExporter extends AbstractExporter implements ExporterInterface
     /**
      * Render file content
      *
-     * @param $dataProvider
-     * @param $columns
+     * @param $gird
      * @return string
+     * @throws IOException
+     * @throws UnsupportedTypeException
+     * @throws WriterNotOpenedException
      */
-    public function export($gird)
+    public function export($gird): string
     {
         $this->initExportOptions($gird);
 
@@ -43,9 +48,8 @@ class CsvExporter extends AbstractExporter implements ExporterInterface
         }
 
         $this->writer->close();
-        $result = ob_get_clean();
 
-        return $result;
+        return ob_get_clean();
     }
 
     protected function applySettings()
