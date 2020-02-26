@@ -176,29 +176,33 @@ abstract class AbstractExporter
      * @param $model
      * @param $key
      * @param $index
-     * @param $column
+     * @param Column $column
      * @return string
      */
-    protected function getColumnValue($model, $key, $index, $column): ?string
+    protected function getColumnValue($model, $key, $index, Column $column): ?string
     {
-        /** @var Column $column */
+        $output = null;
+        $savedValue = $column->value;
+
         if ($column instanceof ActionColumn || $column instanceof CheckboxColumn) {
             return null;
         }
 
-        if ($column->exportedValue) {
+        if (!empty($column->exportedValue)) {
             $column->value = $column->exportedValue;
         }
 
         if ($column instanceof DataColumn) {
-            return $this->grid->formatter->format($column->getDataCellValue($model, $key, $index), $column->format);
+            $output = $this->grid->formatter->format($column->getDataCellValue($model, $key, $index), $column->format);
         }
 
         if ($column instanceof Column) {
-            return $column->renderDataCell($model, $key, $index);
+            $output = $column->renderDataCell($model, $key, $index);
         }
 
-        return null;
+        $column->value = $savedValue;
+
+        return $output;
     }
 
     /**
