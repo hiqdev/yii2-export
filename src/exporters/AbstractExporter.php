@@ -3,6 +3,7 @@
 namespace hiqdev\yii2\export\exporters;
 
 use hiqdev\yii2\menus\grid\MenuColumn;
+use Yii;
 use yii\db\ActiveRecord;
 use yii\db\Query;
 use yii\grid\DataColumn;
@@ -10,33 +11,34 @@ use yii\db\ActiveQueryInterface;
 use yii\grid\ActionColumn;
 use yii\grid\CheckboxColumn;
 use yii\grid\Column;
+use yii\grid\GridView;
 
 abstract class AbstractExporter
 {
     use GridViewTrait;
 
-    public $grid;
+    public GridView $grid;
 
     /**
      * @var bool whether to export footer or not
      */
-    public $exportFooter = true;
+    public bool $exportFooter = true;
 
     /**
      * @var int batch size to fetch the data provider
      */
-    public $batchSize = 2000;
+    public int $batchSize = 2000;
 
     /**
      * @var string filename without extension
      */
-    public $filename;
+    public string $filename;
 
     /**
      * @see ExportMenu target consts
      * @var string how the page will delivery the report
      */
-    public $target;
+    public string $target;
 
 
     /**
@@ -44,22 +46,35 @@ abstract class AbstractExporter
      *
      * @var array
      */
-    protected $settings = [];
+    protected array $settings = [];
 
     /**
      * Init
      *
      * @param $grid
      */
-    public function initExportOptions($grid): void
+    public function initExportOptions(GridView $grid): void
     {
         if (empty($this->filename)) {
             $this->filename = 'report_' . time();
         }
-        foreach ($grid->columns as $i => $column) {
+        $exportedColumns = [];
+        foreach ($grid->columns as $idx => $column) {
             if ($column instanceof CheckboxColumn || $column instanceof ActionColumn || $column instanceof MenuColumn) {
-                unset($grid->columns[$i]);
+                unset($grid->columns[$idx]);
             }
+            if ($column instanceof \hiqdev\higrid\DataColumn && !empty($column->exportedColumns)) {
+                $fakeGrid = Yii::createObject([
+                    'class' => get_class($grid),
+                    'dataProvider' => $grid->dataProvider,
+                    'columns' => $column->exportedColumns,
+                ]);
+                $exportedColumns[$idx] = $fakeGrid->columns;
+                unset($grid->columns[$idx]);
+            }
+        }
+        foreach ($exportedColumns as $position => $columns) {
+            array_splice($grid->columns, $position, 0, $columns);
         }
         $this->grid = $grid;
     }
@@ -108,13 +123,11 @@ abstract class AbstractExporter
 
     /**
      * Fetch data from the data provider and create the rows array
-     *
-     * @return array|void
      */
-    protected function generateBody()
+    protected function generateBody(): array
     {
         if (empty($this->grid->columns)) {
-            return;
+            return [];
         }
 
         $rows = [];

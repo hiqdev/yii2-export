@@ -14,15 +14,15 @@ class CsvExporter extends AbstractExporter implements ExporterInterface
     /**
      * Render file content
      *
-     * @param $gird
+     * @param $grid
      * @return string
      * @throws IOException
      * @throws UnsupportedTypeException
      * @throws WriterNotOpenedException
      */
-    public function export($gird): string
+    public function export($grid): string
     {
-        $this->initExportOptions($gird);
+        $this->initExportOptions($grid);
 
         $this->writer = WriterFactory::create(Type::CSV);
         $this->applySettings();
