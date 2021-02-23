@@ -58,10 +58,10 @@ abstract class AbstractExporter
         if (empty($this->filename)) {
             $this->filename = 'report_' . time();
         }
-        $exportedColumns = [];
+        $columns = [];
         foreach ($grid->columns as $idx => $column) {
             if ($column instanceof CheckboxColumn || $column instanceof ActionColumn || $column instanceof MenuColumn) {
-                unset($grid->columns[$idx]);
+                continue;
             }
             if ($column instanceof \hiqdev\higrid\DataColumn && !empty($column->exportedColumns)) {
                 $fakeGrid = Yii::createObject([
@@ -69,13 +69,14 @@ abstract class AbstractExporter
                     'dataProvider' => $grid->dataProvider,
                     'columns' => $column->exportedColumns,
                 ]);
-                $exportedColumns[$idx] = $fakeGrid->columns;
-                unset($grid->columns[$idx]);
+                foreach ($fakeGrid->columns as $exportedColumn) {
+                    $columns[] = $exportedColumn;
+                }
+            } else {
+                $columns[] = $column;
             }
         }
-        foreach ($exportedColumns as $position => $columns) {
-            array_splice($grid->columns, $position, 0, $columns);
-        }
+        $grid->columns = $columns;
         $this->grid = $grid;
     }
 
