@@ -9,7 +9,6 @@ interface ExporterInterface
      * Render file content
      *
      * @param $grid
-     * @param array $columns
      * @return string
      */
     public function export($grid);
