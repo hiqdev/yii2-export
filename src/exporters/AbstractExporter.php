@@ -132,9 +132,10 @@ abstract class AbstractExporter
         }
 
         $rows = [];
-        if ($this->grid->dataProvider instanceof ActiveQueryInterface) {
+        $dp = $this->grid->dataProvider;
+        if ($dp instanceof ActiveQueryInterface) {
             /** @var Query $query */
-            $query = $this->grid->dataProvider->query;
+            $query = $dp->query;
             foreach ($query->batch($this->batchSize) as $models) {
                 /**
                  * @var int $index
@@ -146,16 +147,17 @@ abstract class AbstractExporter
                 }
             }
         } else {
-            $this->grid->dataProvider->pagination->setPageSize($this->batchSize);
-            $models = $this->grid->dataProvider->getModels();
+            $dp->enableSynchronousCount();
+            $dp->pagination->setPageSize($this->batchSize);
+            $models = $dp->getModels();
             while (count($models) > 0) {
                 foreach ($models as $index => $model) {
                     $rows[] = $this->generateRow($model, $model->id, $index);
                 }
-                if ($this->grid->dataProvider->pagination) {
-                    $this->grid->dataProvider->pagination->page++;
-                    $this->grid->dataProvider->refresh();
-                    $models = $this->grid->dataProvider->getModels();
+                if ($dp->pagination) {
+                    $dp->pagination->page++;
+                    $dp->refresh();
+                    $models = $dp->getModels();
                 } else {
                     $models = [];
                 }
