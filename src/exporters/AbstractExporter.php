@@ -147,7 +147,6 @@ abstract class AbstractExporter
                 }
             }
         } else {
-            $dp->enableSynchronousCount();
             $dp->pagination->setPageSize($this->batchSize);
             $models = $dp->getModels();
             while (count($models) > 0) {
