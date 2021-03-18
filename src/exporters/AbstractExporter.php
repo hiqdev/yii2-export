@@ -12,6 +12,10 @@ use yii\grid\ActionColumn;
 use yii\grid\CheckboxColumn;
 use yii\grid\Column;
 use yii\grid\GridView;
+use Box\Spout\Writer\WriterFactory;
+use Box\Spout\Common\Exception\IOException;
+use Box\Spout\Common\Exception\UnsupportedTypeException;
+use Box\Spout\Writer\Exception\WriterNotOpenedException;
 
 abstract class AbstractExporter
 {
@@ -47,6 +51,13 @@ abstract class AbstractExporter
      * @var array
      */
     protected array $settings = [];
+
+    /**
+     * Export type
+     *
+     * @var string
+     */
+    protected string $exportType;
 
     /**
      * Init
@@ -120,7 +131,6 @@ abstract class AbstractExporter
 
         return $rows;
     }
-
 
     /**
      * Fetch data from the data provider and create the rows array
@@ -261,5 +271,48 @@ abstract class AbstractExporter
         return null;
     }
 
+    /**
+     * Render file content
+     *
+     * @param $grid
+     * @return string
+     * @throws IOException
+     * @throws UnsupportedTypeException
+     * @throws WriterNotOpenedException
+     */
+    public function export($grid): string
+    {
+        $this->initExportOptions($grid);
+        ob_start();
+        $writer = WriterFactory::create($this->exportType);
+        $writer = $this->applySettings($writer);
+        $writer->openToBrowser('php://output');
 
+        //header
+        $headerRow = $this->generateHeader();
+        if (!empty($headerRow)) {
+            $writer->addRow($headerRow);
+        }
+
+        //body
+        $bodyRows = $this->generateBody();
+        foreach ($bodyRows as $row) {
+            $writer->addRow($row);
+        }
+
+        //footer
+        $footerRow = $this->generateFooter();
+        if (!empty($footerRow)) {
+            $writer->addRow($footerRow);
+        }
+
+        $writer->close();
+
+        return ob_get_clean();
+    }
+
+    protected function applySettings($writer)
+    {
+        return $writer;
+    }
 }
