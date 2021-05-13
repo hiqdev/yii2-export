@@ -143,6 +143,7 @@ abstract class AbstractExporter
 
         $rows = [];
         $dp = $this->grid->dataProvider;
+
         if ($dp instanceof ActiveQueryInterface) {
             /** @var Query $query */
             $query = $dp->query;
@@ -158,6 +159,7 @@ abstract class AbstractExporter
             }
         } else {
             $dp->pagination->setPageSize($this->batchSize);
+            $dp->pagination->page = 0;
             $models = $dp->getModels();
             while (count($models) > 0) {
                 foreach ($models as $index => $model) {
