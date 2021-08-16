@@ -160,6 +160,7 @@ abstract class AbstractExporter
         } else {
             $dp->pagination->setPageSize($this->batchSize);
             $dp->pagination->page = 0;
+            $dp->refresh();
             $models = $dp->getModels();
             while (count($models) > 0) {
                 foreach ($models as $index => $model) {
