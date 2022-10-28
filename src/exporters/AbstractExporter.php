@@ -2,6 +2,9 @@
 
 namespace hiqdev\yii2\export\exporters;
 
+use hiqdev\hiart\ActiveDataProvider;
+use hiqdev\yii2\export\components\Exporter;
+use hiqdev\yii2\export\models\BackgroundExport;
 use hiqdev\yii2\menus\grid\MenuColumn;
 use Yii;
 use yii\db\ActiveRecord;
@@ -17,60 +20,59 @@ use Box\Spout\Common\Exception\IOException;
 use Box\Spout\Common\Exception\UnsupportedTypeException;
 use Box\Spout\Writer\Exception\WriterNotOpenedException;
 
-abstract class AbstractExporter
+abstract class AbstractExporter implements ExporterInterface
 {
     use GridViewTrait;
 
-    public GridView $grid;
-
-    /**
-     * @var bool whether to export footer or not
-     */
+    public ?GridView $grid = null;
+    public ?BackgroundExport $exportJob = null;
+    public ?Exporter $exporter = null;
     public bool $exportFooter = true;
-
-    /**
-     * @var int batch size to fetch the data provider
-     */
     public int $batchSize = 2000;
-
-    /**
-     * @var string filename without extension
-     */
-    public string $filename;
-
-    /**
-     * @see ExportMenu target consts
-     * @var string how the page will delivery the report
-     */
+    public ?string $filename = null;
     public string $target;
-
-
-    /**
-     * Setting for exported file
-     *
-     * @var array
-     */
+    public string $exportType;
+    protected ?string $gridClassName = null;
+    protected ActiveDataProvider $dataProvider;
+    protected array $representationColumns = [];
     protected array $settings = [];
 
-    /**
-     * Export type
-     *
-     * @var string
-     */
-    protected string $exportType;
-
-    /**
-     * Init
-     *
-     * @param $grid
-     */
-    public function initExportOptions(GridView $grid): void
+    public function __sleep(): array
     {
+        $attributes = array_keys(get_object_vars($this));
+        unset($attributes['grid'], $attributes['dataProvider']);
+
+        return $attributes;
+    }
+
+    public function __wakeup(): void
+    {
+        $this->initExportOptions();
+    }
+
+    public function setDataProvider(ActiveDataProvider $dataProvider): void
+    {
+        $this->dataProvider = $dataProvider;
+    }
+
+    public function setRepresentationColumns(array $representationColumns): void
+    {
+        $this->representationColumns = $representationColumns;
+    }
+
+    public function setGridClassName(?string $gridClassName): void
+    {
+        $this->gridClassName = $gridClassName;
+    }
+
+    public function initExportOptions(): void
+    {
+        $grid = $this->createGridView();
         if (empty($this->filename)) {
-            $this->filename = 'report_' . time();
+            $this->filename = 'report_' . time() . '.' . $this->exportType;
         }
         $columns = [];
-        foreach ($grid->columns as $idx => $column) {
+        foreach ($grid->columns as $column) {
             if ($column instanceof CheckboxColumn || $column instanceof ActionColumn || $column instanceof MenuColumn) {
                 continue;
             }
@@ -105,6 +107,44 @@ abstract class AbstractExporter
     public function setSettings(array $settings): void
     {
         $this->settings = $settings;
+    }
+
+    /**
+     * Render file content
+     *
+     * @return string
+     * @throws IOException
+     * @throws UnsupportedTypeException
+     * @throws WriterNotOpenedException
+     */
+    public function export(): string
+    {
+        ob_start();
+        $writer = WriterFactory::create($this->exportType);
+        $writer = $this->applySettings($writer);
+        $writer->openToBrowser('php://output');
+
+        //header
+        $headerRow = $this->generateHeader();
+        if (!empty($headerRow)) {
+            $writer->addRow($headerRow);
+        }
+
+        //body
+        $bodyRows = $this->generateBody();
+        foreach ($bodyRows as $row) {
+            $writer->addRow($row);
+        }
+
+        //footer
+        $footerRow = $this->generateFooter();
+        if (!empty($footerRow)) {
+            $writer->addRow($footerRow);
+        }
+
+        $writer->close();
+
+        return ob_get_clean();
     }
 
     /**
@@ -165,6 +205,9 @@ abstract class AbstractExporter
             while (count($models) > 0) {
                 foreach ($models as $index => $model) {
                     $rows[] = $this->generateRow($model, $model->id, $index);
+                    if ($this->exportJob && $this->exporter) {
+                        $this->exportJob->increaseProgress();
+                    }
                 }
                 if ($dp->pagination) {
                     $dp->pagination->page++;
@@ -274,48 +317,22 @@ abstract class AbstractExporter
         return null;
     }
 
-    /**
-     * Render file content
-     *
-     * @param $grid
-     * @return string
-     * @throws IOException
-     * @throws UnsupportedTypeException
-     * @throws WriterNotOpenedException
-     */
-    public function export($grid): string
-    {
-        $this->initExportOptions($grid);
-        ob_start();
-        $writer = WriterFactory::create($this->exportType);
-        $writer = $this->applySettings($writer);
-        $writer->openToBrowser('php://output');
-
-        //header
-        $headerRow = $this->generateHeader();
-        if (!empty($headerRow)) {
-            $writer->addRow($headerRow);
-        }
-
-        //body
-        $bodyRows = $this->generateBody();
-        foreach ($bodyRows as $row) {
-            $writer->addRow($row);
-        }
-
-        //footer
-        $footerRow = $this->generateFooter();
-        if (!empty($footerRow)) {
-            $writer->addRow($footerRow);
-        }
-
-        $writer->close();
-
-        return ob_get_clean();
-    }
-
     protected function applySettings($writer)
     {
         return $writer;
+    }
+
+    private function createGridView(): GridView
+    {
+        $dataProvider = $this->dataProvider;
+        /** @var GridView $grid */
+        $grid = Yii::createObject([
+            'class' => $this->gridClassName,
+            'dataProvider' => $dataProvider,
+            'columns' => $this->representationColumns,
+        ]);
+        $grid->dataColumnClass = DataColumn::class;
+
+        return $grid;
     }
 }

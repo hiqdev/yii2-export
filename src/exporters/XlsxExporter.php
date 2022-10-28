@@ -2,9 +2,12 @@
 
 namespace hiqdev\yii2\export\exporters;
 
-use Box\Spout\Writer\WriterFactory;
-
-class XlsxExporter extends AbstractExporter implements ExporterInterface
+class XlsxExporter extends AbstractExporter
 {
-    protected string $exportType = Type::XLSX;
+    public string $exportType = Type::XLSX;
+
+    public function getMimeType(): string
+    {
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    }
 }
