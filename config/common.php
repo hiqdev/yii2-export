@@ -18,6 +18,9 @@ return [
                 ],
             ],
         ],
+        'exporter' => [
+            'class' => hiqdev\yii2\export\components\Exporter::class,
+        ]
     ],
     'container' => [
         'definitions' => [

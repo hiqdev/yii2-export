@@ -1,16 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace hiqdev\yii2\export\exporters;
 
 interface ExporterInterface
 {
+    public function export(): string;
 
-    /**
-     * Render file content
-     *
-     * @param $grid
-     * @return string
-     */
-    public function export($grid);
+    public function getMimeType(): string;
 }
 
