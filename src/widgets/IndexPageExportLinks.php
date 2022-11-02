@@ -16,14 +16,16 @@ class IndexPageExportLinks extends Widget
         $downloadUrl = 'download-export';
         $step0Msg = Yii::t('hiqdev.export', 'Downloading');
         $step1Msg = Yii::t('hiqdev.export', 'Initialization');
-        $step2Msg = Yii::t('hiqdev.export', 'Please wait while the report is being generated');
+        $step2Msg = Yii::t('hiqdev.export', 'Report is being generated');
         $this->view->registerJs(/** @lang JavaScript */ "
             (($) => {
               const bar = $('#export-progress-box');
               const progress = bar.find('.progress-bar').eq(0);
+              const progressText = bar.find('.progress-text').eq(0);
+              const progressNumber = bar.find('.progress-number').eq(0);
               const exportBtn = $('#export-btn');
               const downloadWithProggress = (id, ext) => {
-                progress.text('$step0Msg');
+                progressText.text('$step0Msg');
                 const xhr = $.ajaxSettings.xhr();
                 xhr.onreadystatechange = function () {
                   if (this.readyState === 4 && this.status === 200) {
@@ -48,10 +50,14 @@ class IndexPageExportLinks extends Widget
                 xhr.onprogress = function (event) {
                   if (event.lengthComputable) {
                     const percentComplete = Math.floor((event.loaded / event.total) * 100) + '%';
-                    progress.css('width', percentComplete).text(percentComplete);
+                    progress.css('width', percentComplete);
+                    progressNumber.text(percentComplete);
                     if (percentComplete === '100%') {
-                      bar.hide(500, () => progress.text(''))
-                      exportBtn.attr('disabled', false).toggleClass('disabled');
+                      bar.hide(500, () => {
+                        progressText.text('');
+                        progressNumber.text('');
+                        exportBtn.attr('disabled', false).toggleClass('disabled');
+                      });
                     }
                   }
                 };
@@ -69,22 +75,24 @@ class IndexPageExportLinks extends Widget
                 const url = new URL(href);
                 exportBtn.attr('disabled', true).toggleClass('disabled');
                 if (id) {
-                  bar.show(500, () => progress.text('$step1Msg'));
+                  bar.show(500, () => progressText.text('$step1Msg'));
                   $.post(href, {id: id});
                   setTimeout(() => {
                     const source = new EventSource('$progressUrl' + '?id=' + id);
                     source.addEventListener('message', event => {
                       const data = JSON.parse(event.data);
                       if (data.status === 'running') {
-                        progress.text('$step2Msg');
+                        progressText.text('$step2Msg');
                         const totalElement = $('div[role=grid] .summary > b').eq(1);
                         if (totalElement.length > 0 && data.progress > 0) {
                           const total = parseInt(totalElement.text().replace(/\D/g, ''));
                           const percentComplete = Math.floor((data.progress / total) * 100) + '%';
-                          progress.css('width', percentComplete).text(data.progress + ' / ' + total);
+                          progress.css('width', percentComplete);
+                          progressNumber.text(data.progress + ' / ' + total);
                         }
                       } else if (data.status === 'success') {
-                        progress.css('width', '100%').text('');
+                        progress.css('width', '100%');
+                        progressNumber.text('');
                         source.close();
                         downloadWithProggress(id, url.searchParams.get('format'));
                       }

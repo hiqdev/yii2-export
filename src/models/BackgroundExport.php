@@ -95,7 +95,7 @@ class BackgroundExport
         return $cache->set(
             [$this->id, 'report'],
             ['data' => $data, 'mimeType' => $exporter->getMimeType(), 'fileName' => $exporter->filename],
-            180
+            0
         );
     }
 }
