@@ -1,9 +1,9 @@
 <?php
 
 $this->registerCss("
-#export-progress-box .progress-bar {
+#export-progress-box .progress {
     width: 100%;
-    min-width: 30%;
+    min-width: 1%;
 }
 ");
 
@@ -15,8 +15,11 @@ $this->registerCss("
     </div>
 
     <div class="box-body">
-        <div class="progress active">
-            <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar">
+        <div class="progress-group">
+            <span class="progress-text"></span>
+            <span class="progress-number"></span>
+            <div class="progress sm">
+                <div class="progress-bar progress-bar-green progress-bar-striped"></div>
             </div>
         </div>
     </div>
