@@ -255,24 +255,11 @@ abstract class AbstractExporter implements ExporterInterface
         if ($column instanceof ActionColumn || $column instanceof CheckboxColumn) {
             return null;
         }
-
-        $output = null;
         $savedValue = $column->value;
-
-
         if (!empty($column->exportedValue)) {
             $column->value = $column->exportedValue;
         }
-
-        if ($column instanceof DataColumn) {
-            $cellValue = $column->getDataCellValue($model, $key, $index);
-            $output = $this->grid->formatter->format($cellValue, $column->format);
-        }
-
-        if ($column instanceof Column) {
-            $output = $column->renderDataCell($model, $key, $index);
-        }
-
+        $output = $column->renderDataCell($model, $key, $index);
         $column->value = $savedValue;
 
         return $output;
