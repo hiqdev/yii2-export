@@ -252,19 +252,21 @@ abstract class AbstractExporter implements ExporterInterface
      */
     protected function getColumnValue($model, $key, $index, Column $column): ?string
     {
-        $output = null;
-        $savedValue = $column->value;
-
         if ($column instanceof ActionColumn || $column instanceof CheckboxColumn) {
             return null;
         }
+
+        $output = null;
+        $savedValue = $column->value;
+
 
         if (!empty($column->exportedValue)) {
             $column->value = $column->exportedValue;
         }
 
         if ($column instanceof DataColumn) {
-            $output = $this->grid->formatter->format($column->getDataCellValue($model, $key, $index), $column->format);
+            $cellValue = $column->getDataCellValue($model, $key, $index);
+            $output = $this->grid->formatter->format($cellValue, $column->format);
         }
 
         if ($column instanceof Column) {

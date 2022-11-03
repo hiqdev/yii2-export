@@ -42,7 +42,7 @@ class Exporter extends Component
     public function runJob(string $id, BackgroundExportAction $action, array $representationColumns): void
     {
         $exporter = $this->prepare($action, $representationColumns);
-        $j = new BackgroundExport($id);
+        $j = new BackgroundExport($id, $exporter->getMimeType(), $exporter->exportType);
         if ($this->setJob($id, $j)) {
             $job = $this->getJob($id);
             if ($job->getStatus() === BackgroundExport::STATUS_NEW) {
@@ -51,12 +51,16 @@ class Exporter extends Component
                     if ($job->run($exporter, $this)) {
                         $job->endJob($this);
                     } else {
-                        $job->endJob($this, false, "The export-export job failed run.");
+                        $msg = "The export-export job failed run.";
+                        $job->endJob($this, false, $msg);
+                        Yii::error('Export: ' . $msg);
                     }
                 } catch (\Exception $e) {
                     $job->endJob($this, false, $e->getMessage());
+                    Yii::error('Export: ' . $e->getMessage());
                 }
             } else {
+                Yii::warning('Export: The export job has no STATUS_NEW.');
                 throw new Exception("The export job has no STATUS_NEW.");
             }
         }
@@ -86,7 +90,7 @@ class Exporter extends Component
 
     public function setJob(string $jobId, BackgroundExport $job): bool
     {
-        return Yii::$app->cache->set([$jobId, 'job'], serialize($job));
+        return Yii::$app->cache->set([$jobId, 'job'], serialize($job), 3600 * 24);
     }
 
     public function loadSettings($type)

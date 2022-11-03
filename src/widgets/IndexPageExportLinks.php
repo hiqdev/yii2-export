@@ -16,7 +16,7 @@ class IndexPageExportLinks extends Widget
         $downloadUrl = 'download-export';
         $step0Msg = Yii::t('hiqdev.export', 'Downloading');
         $step1Msg = Yii::t('hiqdev.export', 'Initialization');
-        $step2Msg = Yii::t('hiqdev.export', 'Report is being generated');
+        $step2Msg = Yii::t('hiqdev.export', 'Exporting...');
         $this->view->registerJs(/** @lang JavaScript */ "
             (($) => {
               const bar = $('#export-progress-box');

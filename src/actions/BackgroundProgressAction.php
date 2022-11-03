@@ -33,7 +33,7 @@ class BackgroundProgressAction extends IndexAction
             echo "id: " . $id . PHP_EOL;
             echo "data: " . $json . PHP_EOL;
             echo PHP_EOL;
-            ob_flush();
+            @ob_flush();
             flush();
             sleep(1);
             if ($status === BackgroundExport::STATUS_SUCCESS) {
