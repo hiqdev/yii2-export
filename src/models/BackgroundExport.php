@@ -15,7 +15,6 @@ class BackgroundExport
     public const STATUS_ERROR = 'error';
     public const STATUS_SUCCESS = 'success';
 
-    protected $id;
     protected $runTs;
     protected $createTs;
     protected $finishTs;
@@ -23,15 +22,14 @@ class BackgroundExport
     protected string $status = self::STATUS_NEW;
     protected int $progress = 0;
 
-    public function __construct(?string $id = null)
+    public function __construct(protected string $id, public string $mimeType, public string $extension)
     {
-        $this->id = $id ?? md5(uniqid('', true));
         $this->createTs = time();
     }
 
-    public function increaseProgress(): void
+    public function increaseProgress(?int $count = 1): void
     {
-        $this->progress++;
+        $this->progress += $count;
         Yii::$app->exporter->setJob($this->id, $this);
     }
 
@@ -92,10 +90,11 @@ class BackgroundExport
         }
         $data = $exporter->export();
 
-        return $cache->set(
-            [$this->id, 'report'],
-            ['data' => $data, 'mimeType' => $exporter->getMimeType(), 'fileName' => $exporter->filename],
-            0
-        );
+        return (new ReportManager($this->id))->save($data);
+    }
+
+    public function getFilename(): string
+    {
+        return $this->id . '.' . $this->extension;
     }
 }

@@ -19,7 +19,7 @@ $this->registerCss("
             <span class="progress-text"></span>
             <span class="progress-number"></span>
             <div class="progress sm">
-                <div class="progress-bar progress-bar-green progress-bar-striped"></div>
+                <div class="progress-bar progress-bar-green progress-bar-striped active" role="progressbar"></div>
             </div>
         </div>
     </div>
