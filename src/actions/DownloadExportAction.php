@@ -6,7 +6,7 @@ namespace hiqdev\yii2\export\actions;
 
 use hipanel\actions\IndexAction;
 use hiqdev\yii2\export\models\BackgroundExport;
-use hiqdev\yii2\export\models\ReportManager;
+use hiqdev\yii2\export\models\SaveManager;
 use Yii;
 
 class DownloadExportAction extends IndexAction
@@ -18,7 +18,7 @@ class DownloadExportAction extends IndexAction
         $job = Yii::$app->exporter->getJob($id);
         if ($job && $job->getStatus() === BackgroundExport::STATUS_SUCCESS) {
             $job->deleteJob();
-            $saver = new ReportManager($id);
+            $saver = new SaveManager($id);
             $stream = $saver->getStream($job->mimeType);
             $saver->delete();
 

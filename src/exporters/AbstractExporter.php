@@ -5,6 +5,7 @@ namespace hiqdev\yii2\export\exporters;
 use hiqdev\hiart\ActiveDataProvider;
 use hiqdev\yii2\export\components\Exporter;
 use hiqdev\yii2\export\models\BackgroundExport;
+use hiqdev\yii2\export\models\SaveManager;
 use hiqdev\yii2\menus\grid\MenuColumn;
 use Yii;
 use yii\db\ActiveRecord;
@@ -16,9 +17,7 @@ use yii\grid\CheckboxColumn;
 use yii\grid\Column;
 use yii\grid\GridView;
 use Box\Spout\Writer\WriterFactory;
-use Box\Spout\Common\Exception\IOException;
 use Box\Spout\Common\Exception\UnsupportedTypeException;
-use Box\Spout\Writer\Exception\WriterNotOpenedException;
 
 abstract class AbstractExporter implements ExporterInterface
 {
@@ -28,7 +27,7 @@ abstract class AbstractExporter implements ExporterInterface
     public ?BackgroundExport $exportJob = null;
     public ?Exporter $exporter = null;
     public bool $exportFooter = true;
-    public int $batchSize = 2000;
+    public int $batchSize = 4_000;
     public ?string $filename = null;
     public string $target;
     public string $exportType;
@@ -112,17 +111,14 @@ abstract class AbstractExporter implements ExporterInterface
     /**
      * Render file content
      *
-     * @return string
-     * @throws IOException
+     * @param SaveManager $saveManager
      * @throws UnsupportedTypeException
-     * @throws WriterNotOpenedException
      */
-    public function export(): string
+    public function export(SaveManager $saveManager): void
     {
-        ob_start();
         $writer = WriterFactory::create($this->exportType);
         $writer = $this->applySettings($writer);
-        $writer->openToBrowser('php://output');
+        $writer->openToFile($saveManager->getFilePath());
 
         //header
         $headerRow = $this->generateHeader();
@@ -131,9 +127,9 @@ abstract class AbstractExporter implements ExporterInterface
         }
 
         //body
-        $bodyRows = $this->generateBody();
-        foreach ($bodyRows as $row) {
-            $writer->addRow($row);
+        $batches = $this->generateBody();
+        foreach ($batches as $rows) {
+            $writer->addRows($rows);
         }
 
         //footer
@@ -143,8 +139,6 @@ abstract class AbstractExporter implements ExporterInterface
         }
 
         $writer->close();
-
-        return ob_get_clean();
     }
 
     /**
@@ -159,7 +153,7 @@ abstract class AbstractExporter implements ExporterInterface
         }
 
         $rows = [];
-        foreach ($this->grid->columns as $attribute => $column) {
+        foreach ($this->grid->columns as $column) {
             /** @var Column $column */
             if (($column instanceof DataColumn)) {
                 $head = $this->getColumnHeader($column);
@@ -181,7 +175,7 @@ abstract class AbstractExporter implements ExporterInterface
             return [];
         }
 
-        $rows = [];
+        $batch = [];
         $dp = $this->grid->dataProvider;
 
         if ($dp instanceof ActiveQueryInterface) {
@@ -192,10 +186,15 @@ abstract class AbstractExporter implements ExporterInterface
                  * @var int $index
                  * @var ActiveRecord $model
                  */
+                $rows = [];
                 foreach ($models as $index => $model) {
                     $key = $model->getPrimaryKey();
                     $rows[] = $this->generateRow($model, $key, $index);
+                    if ($this->exportJob && $this->exporter) {
+                        $this->exportJob->increaseProgress();
+                    }
                 }
+                $batch[] = [...$rows];
             }
         } else {
             $dp->pagination->setPageSize($this->batchSize);
@@ -203,15 +202,18 @@ abstract class AbstractExporter implements ExporterInterface
             $dp->refresh();
             $models = $dp->getModels();
             while (count($models) > 0) {
+                $rows = [];
                 foreach ($models as $index => $model) {
                     $rows[] = $this->generateRow($model, $model->id, $index);
                     if ($this->exportJob && $this->exporter) {
                         $this->exportJob->increaseProgress();
                     }
                 }
+                $batch[] = [...$rows];
                 if ($dp->pagination) {
                     $dp->pagination->page++;
                     $dp->refresh();
+                    unset($models);
                     $models = $dp->getModels();
                 } else {
                     $models = [];
@@ -219,7 +221,7 @@ abstract class AbstractExporter implements ExporterInterface
             }
         }
 
-        return $rows;
+        return $batch;
     }
 
     /**
@@ -248,7 +250,7 @@ abstract class AbstractExporter implements ExporterInterface
      * @param $key
      * @param $index
      * @param Column $column
-     * @return string
+     * @return string|null
      */
     protected function getColumnValue($model, $key, $index, Column $column): ?string
     {
@@ -259,7 +261,12 @@ abstract class AbstractExporter implements ExporterInterface
         if (!empty($column->exportedValue)) {
             $column->value = $column->exportedValue;
         }
-        $output = $column->renderDataCell($model, $key, $index);
+        if (method_exists($column, 'getDataCellValue')) {
+            $cellValue = $column->getDataCellValue($model, $key, $index);
+            $output = $this->grid->formatter->format($cellValue, $column->format);
+        } else {
+            $output = $column->renderDataCell($model, $key, $index);
+        }
         $column->value = $savedValue;
 
         return $output;
@@ -281,7 +288,7 @@ abstract class AbstractExporter implements ExporterInterface
         }
 
         $rows = [];
-        foreach ($this->grid->columns as $n => $column) {
+        foreach ($this->grid->columns as $column) {
             /** @var Column $column */
             $rows[] = $column->footer !== '' ? $this->sanitizeRow($column->footer) : '';
         }
@@ -295,7 +302,7 @@ abstract class AbstractExporter implements ExporterInterface
      * @param string|null $value
      * @return string|null
      */
-    protected function sanitizeRow($value): ?string
+    protected function sanitizeRow(?string $value): ?string
     {
         if ($value) {
             $value = str_replace('&nbsp;', '', strip_tags($value));

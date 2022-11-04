@@ -82,15 +82,17 @@ class BackgroundExport
 
     public function run(ExporterInterface $exporter, Exporter $component): bool
     {
-        $cache = Yii::$app->cache;
         $exporter->exportJob = $this;
         $exporter->exporter = $component;
-        if ($cache->exists([$this->id, 'report'])) {
-            return true;
+        $saver = new SaveManager($this->id);
+        try {
+            $exporter->export($saver);
+        } catch (\Exception $e) {
+            Yii::warning('Export: '. $e->getMessage());
+            return false;
         }
-        $data = $exporter->export();
 
-        return (new ReportManager($this->id))->save($data);
+        return true;
     }
 
     public function getFilename(): string
