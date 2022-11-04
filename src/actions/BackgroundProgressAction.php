@@ -24,6 +24,7 @@ class BackgroundProgressAction extends IndexAction
                 $job = Yii::$app->exporter->getJob($id);
                 $status = $job->getStatus();
             } catch (Exception $exception) {
+                Yii::error('Export: ' . $exception->getMessage());
                 break;
             }
             $json = json_encode(

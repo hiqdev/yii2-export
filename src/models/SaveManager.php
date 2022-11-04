@@ -7,7 +7,7 @@ namespace hiqdev\yii2\export\models;
 use Yii;
 use yii\helpers\FileHelper;
 
-class ReportManager
+class SaveManager
 {
     private string $path = '@runtime/export-reports';
 
