@@ -17,12 +17,14 @@ class IndexPageExportLinks extends Widget
         $step0Msg = Yii::t('hiqdev.export', 'Downloading');
         $step1Msg = Yii::t('hiqdev.export', 'Initialization');
         $step2Msg = Yii::t('hiqdev.export', 'Exporting...');
+        $step3Msg = Yii::t('hiqdev.export', 'Wait until the report is downloaded');
         $this->view->registerJs(/** @lang JavaScript */ "
             (($) => {
               const bar = $('#export-progress-box');
               const progress = bar.find('.progress-bar').eq(0);
               const progressText = bar.find('.progress-text').eq(0);
               const progressNumber = bar.find('.progress-number').eq(0);
+              const progressDescription = bar.find('.progress-description').eq(0);
               const exportBtn = $('#export-btn');
               const downloadWithProggress = (id, ext) => {
                 progressText.text('$step0Msg');
@@ -52,10 +54,12 @@ class IndexPageExportLinks extends Widget
                     const percentComplete = Math.floor((event.loaded / event.total) * 100) + '%';
                     progress.css('width', percentComplete);
                     progressNumber.text(percentComplete);
+                    progressDescription.text('$step3Msg');
                     if (percentComplete === '100%') {
                       bar.hide(500, () => {
                         progressText.text('');
                         progressNumber.text('');
+                        progressDescription.text('');
                         exportBtn.attr('disabled', false).toggleClass('disabled');
                       });
                     }
