@@ -121,12 +121,12 @@ class IndexPageExportLinks extends Widget
     protected function getItems(): array
     {
         $items = [];
-        foreach ([Type::CSV, Type::TSV, Type::XLSX] as $type) {
+        foreach ([Type::CSV => 'CSV', Type::TSV => 'TSV', Type::XLSX => 'Excel XLSX'] as $type => $label) {
             $icon = $type === Type::XLSX ? 'fa-file-excel-o' : 'fa-file-code-o';
             $url = $this->combineUrl('export', $type);
             $items[] = [
                 'url' => $url,
-                'label' => "<i class=\"fa $icon\"></i>" . strtoupper($type),
+                'label' => "<i class=\"fa $icon\"></i>" . $label,
                 'encode' => false,
                 'linkOptions' => [
                     'class' => 'export-report-link',
