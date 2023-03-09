@@ -42,6 +42,11 @@ class IndexPageExportLinks extends Widget
                       // IE version
                       var blob = new Blob([xhr.response], { type: 'application/force-download' });
                       window.navigator.msSaveBlob(blob, filename);
+                    } else if (/(Version)\/(\d+)\.(\d+)(?:\.(\d+))?.*Safari\//.test(navigator.userAgent)) {
+                      const link = document.createElement('a');
+                      link.href = window.URL.createObjectURL(xhr.response);
+                      link.download = filename;
+                      link.click();
                     } else {
                       // Firefox version
                       var file = new File([xhr.response], filename, { type: 'application/force-download' });
