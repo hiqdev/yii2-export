@@ -31,7 +31,7 @@ class IndexPageExportLinks extends Widget
                 const xhr = $.ajaxSettings.xhr();
                 xhr.onreadystatechange = function () {
                   if (this.readyState === 4 && this.status === 200) {
-                    const filename = id + '.' + ext;
+                    const filename = 'report_' + id + '.' + ext;
                     if (typeof window.chrome !== 'undefined') {
                       // Chrome version
                       const link = document.createElement('a');
@@ -136,7 +136,7 @@ class IndexPageExportLinks extends Widget
                 'linkOptions' => [
                     'class' => 'export-report-link',
                     'data' => [
-                        'id' => md5($url),
+                        'id' => time(),
                         'background-export-url' => $this->combineUrl('background-export', $type),
                     ],
                 ],

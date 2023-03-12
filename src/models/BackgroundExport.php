@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace hiqdev\yii2\export\models;
 
+use Exception;
 use hiqdev\yii2\export\components\Exporter;
 use hiqdev\yii2\export\exporters\ExporterInterface;
 use Yii;
@@ -87,7 +88,7 @@ class BackgroundExport
         $saver = new SaveManager($this->id);
         try {
             $exporter->export($saver);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Yii::warning('Export: '. $e->getMessage());
             return false;
         }
@@ -97,6 +98,6 @@ class BackgroundExport
 
     public function getFilename(): string
     {
-        return $this->id . '.' . $this->extension;
+        return implode('.', ['report_' . $this->id, $this->extension]);
     }
 }

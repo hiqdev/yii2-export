@@ -28,7 +28,6 @@ abstract class AbstractExporter implements ExporterInterface
     public ?Exporter $exporter = null;
     public bool $exportFooter = true;
     public int $batchSize = 4_000;
-    public ?string $filename = null;
     public string $target;
     public string $exportType;
     protected ?string $gridClassName = null;
@@ -67,9 +66,6 @@ abstract class AbstractExporter implements ExporterInterface
     public function initExportOptions(): void
     {
         $grid = $this->createGridView();
-        if (empty($this->filename)) {
-            $this->filename = 'report_' . time() . '.' . $this->exportType;
-        }
         $columns = [];
         foreach ($grid->columns as $column) {
             if ($column instanceof CheckboxColumn || $column instanceof ActionColumn || $column instanceof MenuColumn) {
