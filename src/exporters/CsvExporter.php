@@ -2,11 +2,13 @@
 
 namespace hiqdev\yii2\export\exporters;
 
+use Box\Spout\Writer\WriterInterface;
+
 class CsvExporter extends AbstractExporter
 {
     public string $exportType = Type::CSV;
 
-    protected function applySettings($writer)
+    protected function applySettings(WriterInterface $writer): WriterInterface
     {
         return $writer
             ->setFieldDelimiter($this->settings['fieldDelimiter'])

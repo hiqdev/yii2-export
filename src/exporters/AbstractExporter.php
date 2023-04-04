@@ -2,11 +2,15 @@
 
 namespace hiqdev\yii2\export\exporters;
 
+use Box\Spout\Common\Entity\Row;
+use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
+use Box\Spout\Writer\WriterInterface;
 use hiqdev\hiart\ActiveDataProvider;
 use hiqdev\yii2\export\components\Exporter;
 use hiqdev\yii2\export\models\BackgroundExport;
 use hiqdev\yii2\export\models\SaveManager;
 use hiqdev\yii2\menus\grid\MenuColumn;
+use NumberFormatter;
 use Yii;
 use yii\db\ActiveRecord;
 use yii\db\Query;
@@ -16,7 +20,6 @@ use yii\grid\ActionColumn;
 use yii\grid\CheckboxColumn;
 use yii\grid\Column;
 use yii\grid\GridView;
-use Box\Spout\Writer\WriterFactory;
 use Box\Spout\Common\Exception\UnsupportedTypeException;
 
 abstract class AbstractExporter implements ExporterInterface
@@ -112,27 +115,32 @@ abstract class AbstractExporter implements ExporterInterface
      */
     public function export(SaveManager $saveManager): void
     {
-        $writer = WriterFactory::create($this->exportType);
+        $this->applyExportFormatting();
+        $writer = WriterEntityFactory::createWriter($this->exportType);
         $writer = $this->applySettings($writer);
         $writer->openToFile($saveManager->getFilePath());
+        $rows = [];
 
         //header
         $headerRow = $this->generateHeader();
         if (!empty($headerRow)) {
-            $writer->addRow($headerRow);
+            $rows[] = $headerRow;
         }
 
         //body
         $batches = $this->generateBody();
-        foreach ($batches as $rows) {
-            $writer->addRows($rows);
+        foreach ($batches as $batch) {
+            $rows = [...$rows, ...$batch];
         }
 
         //footer
         $footerRow = $this->generateFooter();
         if (!empty($footerRow)) {
-            $writer->addRow($footerRow);
+            $rows[] = $footerRow;
         }
+
+        $rowObjects = array_map(static fn(array $row): Row => WriterEntityFactory::createRowFromArray($row), $rows);
+        $writer->addRows($rowObjects);
 
         $writer->close();
     }
@@ -309,7 +317,7 @@ abstract class AbstractExporter implements ExporterInterface
         return null;
     }
 
-    protected function applySettings($writer)
+    protected function applySettings(WriterInterface $writer): WriterInterface
     {
         return $writer;
     }
@@ -326,5 +334,17 @@ abstract class AbstractExporter implements ExporterInterface
         $grid->dataColumnClass = DataColumn::class;
 
         return $grid;
+    }
+
+    private function applyExportFormatting()
+    {
+        $formatter = Yii::$app->formatter;
+        $formatter->currencyDecimalSeparator = ',';
+        $formatter->decimalSeparator = ',';
+        $formatter->thousandSeparator = '';
+        $formatter->numberFormatterOptions = [
+            NumberFormatter::MIN_FRACTION_DIGITS => 2,
+            NumberFormatter::MAX_FRACTION_DIGITS => 2,
+        ];
     }
 }
