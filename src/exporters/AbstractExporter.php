@@ -5,12 +5,12 @@ namespace hiqdev\yii2\export\exporters;
 use Box\Spout\Common\Entity\Row;
 use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
 use Box\Spout\Writer\WriterInterface;
+use Exception;
 use hiqdev\hiart\ActiveDataProvider;
 use hiqdev\yii2\export\components\Exporter;
 use hiqdev\yii2\export\models\BackgroundExport;
 use hiqdev\yii2\export\models\SaveManager;
 use hiqdev\yii2\menus\grid\MenuColumn;
-use NumberFormatter;
 use Yii;
 use yii\db\ActiveRecord;
 use yii\db\Query;
@@ -240,8 +240,12 @@ abstract class AbstractExporter implements ExporterInterface
     {
         $row = [];
         foreach ($this->grid->columns as $column) {
-            $value = $this->getColumnValue($model, $key, $index, $column);
-            $row[] = $this->sanitizeRow($value);
+            try {
+                $value = $this->getColumnValue($model, $key, $index, $column);
+            } catch (Exception $exception) {
+                $value = implode("\n", ['!--->', $exception->getMessage(), ...$model->toArray()]);
+            }
+            $row[] = is_string($value) ? $this->sanitizeRow($value) : $value;
         }
 
         return $row;
