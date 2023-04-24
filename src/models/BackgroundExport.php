@@ -81,19 +81,12 @@ class BackgroundExport
         return Yii::$app->cache->delete([$this->id, 'job']);
     }
 
-    public function run(ExporterInterface $exporter, Exporter $component): bool
+    public function run(ExporterInterface $exporter, Exporter $component): void
     {
         $exporter->exportJob = $this;
         $exporter->exporter = $component;
         $saver = new SaveManager($this->id);
-        try {
-            $exporter->export($saver);
-        } catch (Exception $e) {
-            Yii::warning('Export: '. $e->getMessage());
-            return false;
-        }
-
-        return true;
+        $exporter->export($saver);
     }
 
     public function getFilename(): string

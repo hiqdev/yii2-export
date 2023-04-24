@@ -13,6 +13,7 @@ class SaveManager
 
     public function __construct(private readonly string $id)
     {
+        FileHelper::createDirectory($this->getPath());
     }
 
     public function save(string $payload): bool

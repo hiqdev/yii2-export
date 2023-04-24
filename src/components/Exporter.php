@@ -48,13 +48,8 @@ class Exporter extends Component
             if ($job->getStatus() === BackgroundExport::STATUS_NEW) {
                 $job->beginJob($this);
                 try {
-                    if ($job->run($exporter, $this)) {
-                        $job->endJob($this);
-                    } else {
-                        $msg = "The export-export job failed run.";
-                        $job->endJob($this, false, $msg);
-                        Yii::error('Export: ' . $msg);
-                    }
+                    $job->run($exporter, $this);
+                    $job->endJob($this);
                 } catch (\Exception $e) {
                     $job->endJob($this, false, $e->getMessage());
                     Yii::error('Export: ' . $e->getMessage());

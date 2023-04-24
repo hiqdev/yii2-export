@@ -13,7 +13,6 @@ class BackgroundExportAction extends IndexAction
     {
         if ($this->controller->request->isAjax) {
             ignore_user_abort(true);
-            set_time_limit(0);
             ini_set('memory_limit', '2G');
 
             ob_start();
