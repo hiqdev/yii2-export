@@ -5,6 +5,7 @@ namespace hiqdev\yii2\export\exporters;
 use Box\Spout\Common\Entity\Row;
 use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
 use Box\Spout\Writer\WriterInterface;
+use Exception;
 use hiqdev\hiart\ActiveDataProvider;
 use hiqdev\yii2\export\components\Exporter;
 use hiqdev\yii2\export\models\BackgroundExport;
@@ -240,7 +241,11 @@ abstract class AbstractExporter implements ExporterInterface
     {
         $row = [];
         foreach ($this->grid->columns as $column) {
-            $value = $this->getColumnValue($model, $key, $index, $column);
+            try {
+                $value = $this->getColumnValue($model, $key, $index, $column);
+            } catch (Exception $exception) {
+                $value = implode("\n", ['!--->', $exception->getMessage(), ...$model->toArray()]);
+            }
             $row[] = $this->sanitizeRow($value);
         }
 
