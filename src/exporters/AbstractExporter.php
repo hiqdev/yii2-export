@@ -21,6 +21,7 @@ use yii\grid\CheckboxColumn;
 use yii\grid\Column;
 use yii\grid\GridView;
 use Box\Spout\Common\Exception\UnsupportedTypeException;
+use NumberFormatter;
 
 abstract class AbstractExporter implements ExporterInterface
 {
