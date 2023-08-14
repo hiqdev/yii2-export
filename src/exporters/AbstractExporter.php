@@ -269,8 +269,9 @@ abstract class AbstractExporter implements ExporterInterface
         $savedValue = $column->value;
         if (!empty($column->exportedValue)) {
             $column->value = $column->exportedValue;
+            $column->content = $column->exportedValue;
         }
-        if (method_exists($column, 'getDataCellValue')) {
+        if (method_exists($column, 'getDataCellValue') && !$column->exportedValue) {
             $cellValue = $column->getDataCellValue($model, $key, $index);
             $output = $this->grid->formatter->format($cellValue, $column->format);
         } else {
@@ -305,16 +306,11 @@ abstract class AbstractExporter implements ExporterInterface
         return $rows;
     }
 
-    /**
-     * Prevention execution code on an administrator’s machine in their user’s security context.
-     *
-     * @param string|null $value
-     * @return string|null
-     */
     protected function sanitizeRow(?string $value): ?string
     {
         if ($value) {
             $value = str_replace('&nbsp;', '', strip_tags($value));
+            $value = trim(preg_replace('/\s\s+/', '', $value));
 
             return ltrim($value, '=+');
         }
