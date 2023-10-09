@@ -157,6 +157,7 @@ class Exporter extends Component
         $indexAction = null;
         if (isset($action->controller->actions()['index'])) {
             $indexActionConfig = $action->controller->actions()['index'];
+            $indexActionConfig['forceStorageFiltersApply'] = true;
             $indexAction = Yii::createObject($indexActionConfig, ['index', $action->controller]);
             $indexAction->beforePerform();
         }
