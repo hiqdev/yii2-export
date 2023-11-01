@@ -85,10 +85,9 @@ class IndexPageExportLinks extends Widget
                 exportBtn.attr('disabled', true).toggleClass('disabled');
                 if (id) {
                   bar.show(500, () => progressText.text('$step1Msg'));
-                  $.post(href, {id: id});
+                  hipanel.runProcess(href, {id: id});
                   setTimeout(() => {
-                    const source = new EventSource('$progressUrl' + '?id=' + id);
-                    source.addEventListener('message', event => {
+                    hipanel.progress('$progressUrl' + '?id=' + id).onMessage((event, source) => {
                       const data = JSON.parse(event.data);
                       if (data.status === 'running') {
                         progressText.text('$step2Msg');

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace hiqdev\yii2\export\actions;
 
 use hipanel\actions\IndexAction;
+use hipanel\actions\RunProcessAction;
 use Yii;
 
 class BackgroundExportAction extends IndexAction
@@ -12,24 +13,13 @@ class BackgroundExportAction extends IndexAction
     public function run(): void
     {
         if ($this->controller->request->isAjax) {
-            ignore_user_abort(true);
-            ini_set('memory_limit', '2G');
-
-            ob_start();
-
-            header('Connection: close');
-            header('Content-Length: ' . ob_get_length());
-            ob_end_flush();
-            @ob_flush();
-            flush();
-            fastcgi_finish_request(); // required for PHP-FPM (PHP > 5.3.3)
-
-            $id = $this->controller->request->post('id');
-            $representation = $this->ensureRepresentationCollection()->getByName($this->getUiModel()->representation);
-            Yii::$app->exporter->runJob($id, $this, $representation->getColumns());
-
-
-            die(); // a must especially if set_time_limit=0 is used and the task ends
+            $action = new RunProcessAction('background-export', $this->controller);
+            $action->onRunProcess = function () {
+                $id = $this->controller->request->post('id');
+                $representation = $this->ensureRepresentationCollection()->getByName($this->getUiModel()->representation);
+                Yii::$app->exporter->runJob($id, $this, $representation->getColumns());
+            };
+            $action->run();
         }
         Yii::$app->end();
     }
