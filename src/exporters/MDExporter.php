@@ -84,9 +84,6 @@ class MDExporter extends AbstractExporter
             }
         }
 
-        // all columns must be at least 3 wide for the markdown to work
-        return array_map(static function ($width) {
-            return max($width, 3);
-        }, $widths);
+        return array_map(static fn($width) => max($width, 3), $widths); // all columns must be at least 3 wide for the markdown to work
     }
 }
