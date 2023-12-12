@@ -37,7 +37,7 @@ class MDExporter extends AbstractExporter
             $result .= $this->renderCell($header[$i], $widths[$i]) . ' | ';
         }
 
-        return rtrim($result, ' ') . PHP_EOL . $this->renderAlignments($widths) . PHP_EOL;
+        return rtrim($result, ' ') . PHP_EOL . $this->renderDelimiter($widths) . PHP_EOL;
     }
 
     protected function renderRows(array $rows, array $widths): string
@@ -59,7 +59,7 @@ class MDExporter extends AbstractExporter
         return str_pad($contents, $width);
     }
 
-    protected function renderAlignments($widths): string
+    protected function renderDelimiter($widths): string
     {
         $row = '|';
         foreach ($widths as $iValue) {
