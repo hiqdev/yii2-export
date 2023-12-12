@@ -6,7 +6,7 @@ use Box\Spout\Writer\WriterInterface;
 
 class CsvExporter extends AbstractExporter
 {
-    public string $exportType = Type::CSV;
+    public Type $exportType = Type::CSV;
 
     protected function applySettings(WriterInterface $writer): WriterInterface
     {

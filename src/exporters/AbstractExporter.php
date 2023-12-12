@@ -3,7 +3,10 @@
 namespace hiqdev\yii2\export\exporters;
 
 use Box\Spout\Common\Entity\Row;
+use Box\Spout\Common\Exception\InvalidArgumentException;
+use Box\Spout\Common\Exception\IOException;
 use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
+use Box\Spout\Writer\Exception\WriterNotOpenedException;
 use Box\Spout\Writer\WriterInterface;
 use Exception;
 use hiqdev\hiart\ActiveDataProvider;
@@ -33,7 +36,7 @@ abstract class AbstractExporter implements ExporterInterface
     public bool $exportFooter = true;
     public int $batchSize = 4_000;
     public string $target;
-    public string $exportType;
+    public Type $exportType;
     protected ?string $gridClassName = null;
     protected ActiveDataProvider $dataProvider;
     protected array $representationColumns = [];
@@ -113,11 +116,14 @@ abstract class AbstractExporter implements ExporterInterface
      *
      * @param SaveManager $saveManager
      * @throws UnsupportedTypeException
+     * @throws IOException
+     * @throws InvalidArgumentException
+     * @throws WriterNotOpenedException
      */
     public function export(SaveManager $saveManager): void
     {
         $this->applyExportFormatting();
-        $writer = WriterEntityFactory::createWriter($this->exportType);
+        $writer = WriterEntityFactory::createWriter($this->exportType->value);
         $writer = $this->applySettings($writer);
         $writer->openToFile($saveManager->getFilePath());
         $rows = [];

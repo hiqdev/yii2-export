@@ -2,11 +2,10 @@
 
 namespace hiqdev\yii2\export\exporters;
 
-interface Type
+enum Type: string
 {
-    public const CSV = 'csv';
-
-    public const TSV = 'tsv';
-
-    public const XLSX = 'xlsx';
+    case CSV = 'csv';
+    case TSV = 'tsv';
+    case XLSX = 'xlsx';
+    case MD = 'md';
 }

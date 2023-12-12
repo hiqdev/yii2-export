@@ -46,7 +46,8 @@
         }
     ],
     "require": {
-        "box/spout": "~3.3"
+        "box/spout": "~3.3",
+        "ext-intl": "*"
     },
     "require-dev": {
         "hiqdev/hidev-php": "<2.0",

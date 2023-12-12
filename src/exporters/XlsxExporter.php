@@ -4,7 +4,7 @@ namespace hiqdev\yii2\export\exporters;
 
 class XlsxExporter extends AbstractExporter
 {
-    public string $exportType = Type::XLSX;
+    public Type $exportType = Type::XLSX;
 
     public function getMimeType(): string
     {

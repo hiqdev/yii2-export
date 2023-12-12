@@ -8,6 +8,8 @@
  * @copyright Copyright (c) 2017, HiQDev (http://hiqdev.com/)
  */
 
+use hiqdev\yii2\export\exporters\Type;
+
 return [
     'components' => [
         'i18n' => [
@@ -20,7 +22,7 @@ return [
         ],
         'exporter' => [
             'class' => hiqdev\yii2\export\components\Exporter::class,
-        ]
+        ],
     ],
     'container' => [
         'definitions' => [
@@ -28,9 +30,10 @@ return [
                 ['class' => \hiqdev\yii2\export\exporters\ExporterFactory::class],
                 [
                     [
-                        \hiqdev\yii2\export\exporters\Type::CSV => \hiqdev\yii2\export\exporters\CsvExporter::class,
-                        \hiqdev\yii2\export\exporters\Type::TSV => \hiqdev\yii2\export\exporters\TsvExporter::class,
-                        \hiqdev\yii2\export\exporters\Type::XLSX => \hiqdev\yii2\export\exporters\XlsxExporter::class,
+                        Type::CSV->value => \hiqdev\yii2\export\exporters\CsvExporter::class,
+                        Type::TSV->value => \hiqdev\yii2\export\exporters\TsvExporter::class,
+                        Type::XLSX->value => \hiqdev\yii2\export\exporters\XlsxExporter::class,
+                        Type::MD->value => \hiqdev\yii2\export\exporters\MDExporter::class,
                     ],
                 ],
             ],
