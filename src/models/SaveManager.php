@@ -20,7 +20,7 @@ class SaveManager
     {
         $path = $this->getPath();
         if (FileHelper::createDirectory($path)) {
-            return file_put_contents($path . DIRECTORY_SEPARATOR . $this->id, $payload, LOCK_EX) !== false;
+            return file_put_contents($this->getFilePath(), $payload, LOCK_EX) !== false;
         }
 
         return false;

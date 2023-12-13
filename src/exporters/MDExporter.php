@@ -17,7 +17,6 @@ class MDExporter extends AbstractExporter
 
     public function export(SaveManager $saveManager): void
     {
-        $fileName = $saveManager->getFilePath();
         $rows = [];
         $header = $this->generateHeader();
         $batches = $this->generateBody();
@@ -27,7 +26,7 @@ class MDExporter extends AbstractExporter
         $widths = $this->calculateWidths([$header, ...$rows]);
         $mdTable = $this->renderHeader($header, $widths);
         $mdTable .= $this->renderRows($rows, $widths);
-        file_put_contents($fileName, $mdTable);
+        $saveManager->save($mdTable);
     }
 
     protected function renderHeader(array $header, array $widths): string
