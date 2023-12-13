@@ -18,7 +18,7 @@ class ExportAction extends IndexAction
         /** @var ExporterInterface $exporter */
         $exporter = Yii::$app->exporter->prepare($this, $representation->getColumns());
         $id = md5($this->controller->request->getAbsoluteUrl());
-        $filename = implode('.', ['report_' . time(), $exporter->exportType]);
+        $filename = implode('.', ['report_' . time(), $exporter->exportType->value]);
         $saver = new SaveManager($id);
         $exporter->export($saver);
         $stream = $saver->getStream($exporter->getMimeType());

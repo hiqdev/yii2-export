@@ -2,16 +2,20 @@
 
 namespace hiqdev\yii2\export\widgets;
 
+use hipanel\assets\OcticonsAsset;
 use hipanel\helpers\Url;
 use hiqdev\yii2\export\exporters\Type;
 use Yii;
 use yii\base\Widget;
 use yii\bootstrap\ButtonDropdown;
+use yii\helpers\Html;
 
 class IndexPageExportLinks extends Widget
 {
     public function run()
     {
+        OcticonsAsset::register($this->view);
+
         $progressUrl = 'progress-export';
         $downloadUrl = 'download-export';
         $step0Msg = Yii::t('hiqdev.export', 'Downloading');
@@ -32,25 +36,55 @@ class IndexPageExportLinks extends Widget
                 xhr.onreadystatechange = function () {
                   if (this.readyState === 4 && this.status === 200) {
                     const filename = 'report_' + id + '.' + ext;
-                    if (typeof window.chrome !== 'undefined') {
-                      // Chrome version
-                      const link = document.createElement('a');
-                      link.href = window.URL.createObjectURL(xhr.response);
-                      link.download = filename;
-                      link.click();
-                    } else if (typeof window.navigator.msSaveBlob !== 'undefined') {
-                      // IE version
-                      var blob = new Blob([xhr.response], { type: 'application/force-download' });
-                      window.navigator.msSaveBlob(blob, filename);
-                    } else if (/(Version)\/(\d+)\.(\d+)(?:\.(\d+))?.*Safari\//.test(navigator.userAgent)) {
-                      const link = document.createElement('a');
-                      link.href = window.URL.createObjectURL(xhr.response);
-                      link.download = filename;
-                      link.click();
+                    if (ext === 'md') {
+                      function copyText(text) {
+                        const listener = function (ev) {
+                          ev.preventDefault();
+                          ev.clipboardData.setData('text/plain', text);
+                        };
+                        document.addEventListener('copy', listener);
+                        document.execCommand('copy');
+                        document.removeEventListener('copy', listener);
+                      }
+                      if (navigator.clipboard) {
+                        window.navigator.permissions.query({ name: 'write-on-clipboard' }).then((result) => {
+                          if (result.state == 'granted' || result.state == 'prompt') {
+                            navigator.clipboard.writeText(xhr.responseText).then(
+                              () => {
+                                hipanel.notify.success('Clipped!');
+                              },
+                              (e) => {
+                                hipanel.notify.error('Failed to copy to clipboard');
+                                console.error(e);
+                              },
+                            );
+                          }
+                        });
+                      } else {
+                        copyText(xhr.responseText);
+                        hipanel.notify.success('Clipped!');
+                      }
                     } else {
-                      // Firefox version
-                      var file = new File([xhr.response], filename, { type: 'application/force-download' });
-                      window.open(URL.createObjectURL(file));
+                      if (typeof window.chrome !== 'undefined') {
+                        // Chrome version
+                        const link = document.createElement('a');
+                        link.href = window.URL.createObjectURL(xhr.response);
+                        link.download = filename;
+                        link.click();
+                      } else if (typeof window.navigator.msSaveBlob !== 'undefined') {
+                        // IE version
+                        var blob = new Blob([xhr.response], { type: 'application/force-download' });
+                        window.navigator.msSaveBlob(blob, filename);
+                      } else if (/(Version)\/(\d+)\.(\d+)(?:\.(\d+))?.*Safari\//.test(navigator.userAgent)) {
+                        const link = document.createElement('a');
+                        link.href = window.URL.createObjectURL(xhr.response);
+                        link.download = filename;
+                        link.click();
+                      } else {
+                        // Firefox version
+                        var file = new File([xhr.response], filename, { type: 'application/force-download' });
+                        window.open(URL.createObjectURL(file));
+                      }
                     }
                   }
                 };
@@ -70,7 +104,7 @@ class IndexPageExportLinks extends Widget
                     }
                   }
                 };
-                xhr.responseType = 'blob';
+                xhr.responseType = ext === 'md' ? 'text' : 'blob';
                 xhr.open('GET', '$downloadUrl' + '?id=' + id, true);
                 xhr.send();
               }
@@ -125,12 +159,16 @@ class IndexPageExportLinks extends Widget
     protected function getItems(): array
     {
         $items = [];
-        foreach ([Type::CSV => 'CSV', Type::TSV => 'TSV', Type::XLSX => 'Excel XLSX'] as $type => $label) {
-            $icon = $type === Type::XLSX ? 'fa-file-excel-o' : 'fa-file-code-o';
+        foreach ([Type::CSV->value => 'CSV', Type::TSV->value => 'TSV', Type::XLSX->value => 'Excel XLSX', Type::MD->value => 'Clipboard MD'] as $type => $label) {
+            $icon = match (Type::from($type)) {
+                Type::XLSX => Html::tag('i', null, ['class' => 'fa fa-fw fa-file-excel-o']),
+                Type::MD => Html::tag('i', null, ['class' => 'octicon octicon-markdown', 'style' => ['margin-right' => '10px']]),
+                default => Html::tag('i', null, ['class' => 'fa fa-fw fa-file-code-o']),
+            };
             $url = $this->combineUrl('export', $type);
             $items[] = [
                 'url' => $url,
-                'label' => "<i class=\"fa $icon\"></i>" . $label,
+                'label' => $icon . $label,
                 'encode' => false,
                 'linkOptions' => [
                     'class' => 'export-report-link',

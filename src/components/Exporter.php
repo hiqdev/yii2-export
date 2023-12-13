@@ -15,6 +15,7 @@ use hiqdev\yii2\export\exporters\Type;
 use hiqdev\higrid\DataColumn;
 use hiqdev\yii2\export\models\BackgroundExport;
 use hiqdev\yii2\export\models\CsvSettings;
+use hiqdev\yii2\export\models\MDSettings;
 use hiqdev\yii2\export\models\TsvSettings;
 use hiqdev\yii2\export\models\XlsxSettings;
 use RuntimeException;
@@ -42,7 +43,7 @@ class Exporter extends Component
     public function runJob(string $id, BackgroundExportAction $action, array $representationColumns): void
     {
         $exporter = $this->prepare($action, $representationColumns);
-        $j = new BackgroundExport($id, $exporter->getMimeType(), $exporter->exportType);
+        $j = new BackgroundExport($id, $exporter->getMimeType(), $exporter->exportType->value);
         if ($this->setJob($id, $j)) {
             $job = $this->getJob($id);
             if ($job->getStatus() === BackgroundExport::STATUS_NEW) {
@@ -91,9 +92,10 @@ class Exporter extends Component
     public function loadSettings($type)
     {
         $map = [
-            Type::CSV => CsvSettings::class,
-            Type::TSV => TsvSettings::class,
-            Type::XLSX => XlsxSettings::class,
+            Type::CSV->value => CsvSettings::class,
+            Type::TSV->value => TsvSettings::class,
+            Type::XLSX->value => XlsxSettings::class,
+            Type::MD->value => MDSettings::class,
         ];
 
         $settings = Yii::createObject($map[$type]);
