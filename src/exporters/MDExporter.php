@@ -33,7 +33,7 @@ class MDExporter extends AbstractExporter
     {
         $result = '| ';
         for ($i = 0, $iMax = count($header); $i < $iMax; $i++) {
-            $result .= $this->renderCell($header[$i], $widths[$i]) . ' | ';
+            $result .= $this->renderCell((string)$header[$i], $widths[$i]) . ' | ';
         }
 
         return rtrim($result, ' ') . PHP_EOL . $this->renderDelimiter($widths) . PHP_EOL;
@@ -45,7 +45,7 @@ class MDExporter extends AbstractExporter
         foreach ($rows as $row) {
             $result .= '| ';
             for ($i = 0, $iMax = count($row); $i < $iMax; $i++) {
-                $result .= $this->renderCell($row[$i], $widths[$i]) . ' | ';
+                $result .= $this->renderCell((string)$row[$i], $widths[$i]) . ' | ';
             }
             $result = rtrim($result, ' ') . PHP_EOL;
         }
@@ -53,7 +53,7 @@ class MDExporter extends AbstractExporter
         return $result;
     }
 
-    protected function renderCell($contents, $width): string
+    protected function renderCell(string $contents, int $width): string
     {
         return str_pad($contents, $width);
     }

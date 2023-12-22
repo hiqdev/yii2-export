@@ -47,7 +47,7 @@ class IndexPageExportLinks extends Widget
                         document.removeEventListener('copy', listener);
                       }
                       if (navigator.clipboard) {
-                        window.navigator.permissions.query({ name: 'write-on-clipboard' }).then((result) => {
+                        window.navigator.permissions.query({ name: 'clipboard-write' }).then((result) => {
                           if (result.state == 'granted' || result.state == 'prompt') {
                             navigator.clipboard.writeText(xhr.responseText).then(
                               () => {
