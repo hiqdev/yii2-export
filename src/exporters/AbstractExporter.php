@@ -343,7 +343,7 @@ abstract class AbstractExporter implements ExporterInterface
         return $grid;
     }
 
-    private function applyExportFormatting()
+    public static function applyExportFormatting()
     {
         $formatter = Yii::$app->formatter;
         $formatter->currencyDecimalSeparator = ',';
