@@ -25,6 +25,7 @@ use yii\grid\Column;
 use yii\grid\GridView;
 use Box\Spout\Common\Exception\UnsupportedTypeException;
 use NumberFormatter;
+use yii\i18n\Formatter;
 
 abstract class AbstractExporter implements ExporterInterface
 {
@@ -122,7 +123,8 @@ abstract class AbstractExporter implements ExporterInterface
      */
     public function export(SaveManager $saveManager): void
     {
-        $this->applyExportFormatting();
+        static::applyExportFormatting();
+        
         $writer = WriterEntityFactory::createWriter($this->exportType->value);
         $writer = $this->applySettings($writer);
         $writer->openToFile($saveManager->getFilePath());
@@ -343,7 +345,7 @@ abstract class AbstractExporter implements ExporterInterface
         return $grid;
     }
 
-    public static function applyExportFormatting()
+    public static function applyExportFormatting(): Formatter
     {
         $formatter = Yii::$app->formatter;
         $formatter->currencyDecimalSeparator = ',';
@@ -353,5 +355,7 @@ abstract class AbstractExporter implements ExporterInterface
             NumberFormatter::MIN_FRACTION_DIGITS => 2,
             NumberFormatter::MAX_FRACTION_DIGITS => 2,
         ];
+
+        return $formatter;
     }
 }
