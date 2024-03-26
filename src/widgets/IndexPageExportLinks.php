@@ -2,7 +2,6 @@
 
 namespace hiqdev\yii2\export\widgets;
 
-use hipanel\assets\OcticonsAsset;
 use hipanel\helpers\Url;
 use hiqdev\yii2\export\exporters\Type;
 use Yii;
