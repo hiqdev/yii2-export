@@ -14,8 +14,6 @@ class IndexPageExportLinks extends Widget
 {
     public function run()
     {
-        OcticonsAsset::register($this->view);
-
         $progressUrl = 'progress-export';
         $downloadUrl = 'download-export';
         $step0Msg = Yii::t('hiqdev.export', 'Downloading');
@@ -162,7 +160,7 @@ class IndexPageExportLinks extends Widget
         foreach ([Type::CSV->value => 'CSV', Type::TSV->value => 'TSV', Type::XLSX->value => 'Excel XLSX', Type::MD->value => 'Clipboard MD'] as $type => $label) {
             $icon = match (Type::from($type)) {
                 Type::XLSX => Html::tag('i', null, ['class' => 'fa fa-fw fa-file-excel-o']),
-                Type::MD => Html::tag('i', null, ['class' => 'octicon octicon-markdown', 'style' => ['margin-right' => '10px']]),
+                Type::MD => Html::tag('i', null, ['class' => 'fa fa-fw fa-download']),
                 default => Html::tag('i', null, ['class' => 'fa fa-fw fa-file-code-o']),
             };
             $url = $this->combineUrl('export', $type);
