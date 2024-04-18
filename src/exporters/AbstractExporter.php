@@ -35,7 +35,7 @@ abstract class AbstractExporter implements ExporterInterface
     public ?BackgroundExport $exportJob = null;
     public ?Exporter $exporter = null;
     public bool $exportFooter = true;
-    public int $batchSize = 4_000;
+    public int $batchSize = 500;
     public string $target;
     public Type $exportType;
     protected ?string $gridClassName = null;
@@ -59,6 +59,7 @@ abstract class AbstractExporter implements ExporterInterface
     public function setDataProvider(ActiveDataProvider $dataProvider): void
     {
         $this->dataProvider = $dataProvider;
+        $this->dataProvider->pagination->pageSize = $this->batchSize;
     }
 
     public function setRepresentationColumns(array $representationColumns): void
@@ -124,7 +125,7 @@ abstract class AbstractExporter implements ExporterInterface
     public function export(SaveManager $saveManager): void
     {
         static::applyExportFormatting();
-        
+
         $writer = WriterEntityFactory::createWriter($this->exportType->value);
         $writer = $this->applySettings($writer);
         $writer->openToFile($saveManager->getFilePath());
@@ -211,8 +212,8 @@ abstract class AbstractExporter implements ExporterInterface
             }
         } else {
             $dp->pagination->setPageSize($this->batchSize);
-            $dp->pagination->page = 0;
-            $dp->refresh();
+            $dp->pagination->page = 1;
+//            $dp->refresh(keepTotalCount: true);
             $models = $dp->getModels();
             while (count($models) > 0) {
                 $rows = [];
@@ -225,7 +226,7 @@ abstract class AbstractExporter implements ExporterInterface
                 $batch[] = [...$rows];
                 if ($dp->pagination) {
                     $dp->pagination->page++;
-                    $dp->refresh();
+                    $dp->refresh(keepTotalCount: true);
                     unset($models);
                     $models = $dp->getModels();
                 } else {
