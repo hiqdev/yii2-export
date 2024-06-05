@@ -9,9 +9,12 @@ use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
 use Box\Spout\Writer\Exception\WriterNotOpenedException;
 use Box\Spout\Writer\WriterInterface;
 use Exception;
+use hipanel\hiart\hiapi\HiapiConnectionInterface;
+use hipanel\hiart\QueryBuilder;
 use hiqdev\hiart\ActiveDataProvider;
+use hiqdev\hiart\guzzle\Request;
 use hiqdev\yii2\export\components\Exporter;
-use hiqdev\yii2\export\models\BackgroundExport;
+use hiqdev\yii2\export\models\ExportJob;
 use hiqdev\yii2\export\models\SaveManager;
 use hiqdev\yii2\menus\grid\MenuColumn;
 use Yii;
@@ -32,10 +35,10 @@ abstract class AbstractExporter implements ExporterInterface
     use GridViewTrait;
 
     public ?GridView $grid = null;
-    public ?BackgroundExport $exportJob = null;
+    public ?ExportJob $exportJob = null;
     public ?Exporter $exporter = null;
     public bool $exportFooter = true;
-    public int $batchSize = 500;
+    public int $batchSize = 4000;
     public string $target;
     public Type $exportType;
     protected ?string $gridClassName = null;
@@ -59,6 +62,7 @@ abstract class AbstractExporter implements ExporterInterface
     public function setDataProvider(ActiveDataProvider $dataProvider): void
     {
         $this->dataProvider = $dataProvider;
+        $this->dataProvider->enableSynchronousCount();
         $this->dataProvider->pagination->pageSize = $this->batchSize;
     }
 
@@ -134,23 +138,26 @@ abstract class AbstractExporter implements ExporterInterface
         //header
         $headerRow = $this->generateHeader();
         if (!empty($headerRow)) {
-            $rows[] = $headerRow;
+            $row = WriterEntityFactory::createRowFromArray($headerRow);
+            $rows[] = $row;
         }
 
         //body
         $batches = $this->generateBody();
         foreach ($batches as $batch) {
-            $rows = [...$rows, ...$batch];
+            foreach ($batch as $row) {
+                $rows[] = WriterEntityFactory::createRowFromArray($row);
+            }
         }
 
         //footer
         $footerRow = $this->generateFooter();
         if (!empty($footerRow)) {
-            $rows[] = $footerRow;
+            $row = WriterEntityFactory::createRowFromArray($footerRow);
+            $rows[] = $row;
         }
 
-        $rowObjects = array_map(static fn(array $row): Row => WriterEntityFactory::createRowFromArray($row), $rows);
-        $writer->addRows($rowObjects);
+        $writer->addRows($rows);
 
         $writer->close();
     }
@@ -185,16 +192,20 @@ abstract class AbstractExporter implements ExporterInterface
      */
     protected function generateBody(): array
     {
+        $connection = Yii::$container->get(HiapiConnectionInterface::class);
         if (empty($this->grid->columns)) {
             return [];
         }
 
         $batch = [];
         $dp = $this->grid->dataProvider;
+        $totalCount = $dp->getTotalCount();
+        $job = $this->exportJob;
 
         if ($dp instanceof ActiveQueryInterface) {
             /** @var Query $query */
             $query = $dp->query;
+            $job->setTotal($totalCount)->setTaskName(Yii::t('hiqdev.export', 'Generating a report'))->setUnit('rows');
             foreach ($query->batch($this->batchSize) as $models) {
                 /**
                  * @var int $index
@@ -204,38 +215,69 @@ abstract class AbstractExporter implements ExporterInterface
                 foreach ($models as $index => $model) {
                     $key = $model->getPrimaryKey();
                     $rows[] = $this->generateRow($model, $key, $index);
-                    if ($this->exportJob && $this->exporter) {
-                        $this->exportJob->increaseProgress();
-                    }
+                    $this->exportJob->increaseProgress();
                 }
                 $batch[] = [...$rows];
             }
         } else {
             $dp->pagination->setPageSize($this->batchSize);
-            $dp->pagination->page = 1;
-//            $dp->refresh(keepTotalCount: true);
-            $models = $dp->getModels();
-            while (count($models) > 0) {
+            $dp->pagination->page = 0;
+            $pageCount = ceil($totalCount / $this->batchSize);
+
+//            $job->setTotal($totalCount)->setTaskName(Yii::t('hiqdev.export', 'Generating a report'))->setUnit('rows');
+//            foreach (range(1, $pageCount) as $page) {
+//                $models = $dp->getModels();
+//                foreach ($models as $index => $model) {
+//                    $rows[] = $this->generateRow($model, $model->id, $index);
+//                    if ($this->exportJob && $this->exporter) {
+//                        $this->exportJob->increaseProgress();
+//                    }
+//                }
+//                $batch[] = [...$rows];
+//                $dp->pagination->page = $page;
+//                $dp->refresh(keepTotalCount: true);
+//            }
+
+            foreach (range(1, $pageCount) as $page) {
+                $allRequests[] = $this->composeRequest($connection, $dp);
+                $dp->pagination->page = $page;
+                $dp->refresh(keepTotalCount: true);
+            }
+            $data = [];
+            $chunks = array_chunk($allRequests, 5, true);
+            $job->setTotal(count($chunks))->setTaskName(Yii::t('hiqdev.export', 'Getting data from the DB'))->setUnit('reqs');
+            foreach ($chunks as $requests) {
+                foreach ($connection->sendPool($requests) as $datum) {
+                    $data[] = [...$datum];
+                }
+                $this->exportJob->increaseProgress();
+            }
+            $job->setTaskName(Yii::t('hiqdev.export', 'Generating a report'))->setTotal($dp->getTotalCount())->setUnit('rows');
+            foreach ($data as $datum) {
                 $rows = [];
+                $models = $dp->query->populate($datum);
                 foreach ($models as $index => $model) {
                     $rows[] = $this->generateRow($model, $model->id, $index);
-                    if ($this->exportJob && $this->exporter) {
+                    if ($this->exportJob->isAlive()) {
                         $this->exportJob->increaseProgress();
                     }
                 }
                 $batch[] = [...$rows];
-                if ($dp->pagination) {
-                    $dp->pagination->page++;
-                    $dp->refresh(keepTotalCount: true);
-                    unset($models);
-                    $models = $dp->getModels();
-                } else {
-                    $models = [];
-                }
             }
+
         }
 
         return $batch;
+    }
+
+    public function composeRequest($connection, $dataProvider): Request
+    {
+        $query = $dataProvider->prepareQuery();
+        $query->from = $query->modelClass::tableName();
+        $query->addAction('search');
+        $query->addOption('batch', true);
+
+        return new Request(new QueryBuilder($connection), $query);
     }
 
     /**

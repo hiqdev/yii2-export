@@ -11,6 +11,11 @@
 use hiqdev\yii2\export\exporters\Type;
 
 return [
+    'controllerMap' => [
+        'exporter' => [
+            \hiqdev\yii2\export\commands\ExporterController::class
+        ],
+    ],
     'components' => [
         'i18n' => [
             'translations' => [

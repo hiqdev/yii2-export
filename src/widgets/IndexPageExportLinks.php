@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace hiqdev\yii2\export\widgets;
 
 use hipanel\helpers\Url;
+use hiqdev\yii2\export\assets\ExporterAssets;
 use hiqdev\yii2\export\exporters\Type;
 use Yii;
 use yii\base\Widget;
@@ -17,8 +20,8 @@ class IndexPageExportLinks extends Widget
         $downloadUrl = 'download-export';
         $step0Msg = Yii::t('hiqdev.export', 'Downloading');
         $step1Msg = Yii::t('hiqdev.export', 'Initialization');
-        $step2Msg = Yii::t('hiqdev.export', 'Exporting...');
-        $step3Msg = Yii::t('hiqdev.export', 'Wait until the report is downloaded');
+        $step4Msg = Yii::t('hiqdev.export', 'Wait until the report is downloaded');
+        ExporterAssets::register($this->view);
         $this->view->registerJs(/** @lang JavaScript */ "
             (($) => {
               const bar = $('#export-progress-box');
@@ -26,7 +29,18 @@ class IndexPageExportLinks extends Widget
               const progressText = bar.find('.progress-text').eq(0);
               const progressNumber = bar.find('.progress-number').eq(0);
               const progressDescription = bar.find('.progress-description').eq(0);
+              const progressCanceExport = bar.find('button').eq(0);
               const exportBtn = $('#export-btn');
+              const resetExport = () => {
+                bar.hide(500, () => {
+                  progressText.text('');
+                  progressNumber.text('');
+                  progressDescription.text('');
+                  exportBtn.attr('disabled', false).removeClass('disabled');
+                  progress.css('width', 0);
+                  progressCanceExport.show();
+                });
+              };
               const downloadWithProggress = (id, ext) => {
                 progressText.text('$step0Msg');
                 const xhr = $.ajaxSettings.xhr();
@@ -90,14 +104,9 @@ class IndexPageExportLinks extends Widget
                     const percentComplete = Math.floor((event.loaded / event.total) * 100) + '%';
                     progress.css('width', percentComplete);
                     progressNumber.text(percentComplete);
-                    progressDescription.text('$step3Msg');
+                    progressDescription.text('$step4Msg');
                     if (percentComplete === '100%') {
-                      bar.hide(500, () => {
-                        progressText.text('');
-                        progressNumber.text('');
-                        progressDescription.text('');
-                        exportBtn.attr('disabled', false).toggleClass('disabled');
-                      });
+                      resetExport();
                     }
                   }
                 };
@@ -110,36 +119,59 @@ class IndexPageExportLinks extends Widget
                   return;
                 }
                 event.preventDefault();
-                const href = event.target.dataset.backgroundExportUrl;
+                const exportUrl = event.target.dataset.exportUrl;
+                const cancelUrl = 'cancel-export';
                 const id = event.target.dataset['id'];
-                const url = new URL(href);
-                exportBtn.attr('disabled', true).toggleClass('disabled');
-                if (id) {
-                  bar.show(500, () => progressText.text('$step1Msg'));
-                  hipanel.runProcess(href, {id: id});
-                  setTimeout(() => {
-                    hipanel.progress('$progressUrl' + '?id=' + id).onMessage((event, source) => {
-                      const data = JSON.parse(event.data);
-                      if (data.status === 'running') {
-                        progressText.text('$step2Msg');
-                        const totalElement = $('div[role=grid] .summary > b').eq(1);
-                        if (totalElement.length > 0 && data.progress > 0) {
-                          const total = parseInt(totalElement.text().replace(/\D/g, ''));
-                          const percentComplete = Math.floor((data.progress / total) * 100) + '%';
-                          progress.css('width', percentComplete);
-                          progressNumber.text(data.progress + ' / ' + total);
-                        }
-                      } else if (data.status === 'success') {
-                        progress.css('width', '100%');
-                        progressNumber.text('');
-                        source.close();
-                        downloadWithProggress(id, url.searchParams.get('format'));
-                      }
+                const url = new URL(exportUrl);
+                exportBtn.attr('disabled', true).addClass('disabled');
+                bar.show(500, () => progressText.text('$step1Msg'));
+                progress.css('width', '100%');
+                hipanel.runProcess(exportUrl, { id }, null, null, function (data, status) {
+                  debugger
+                });
+                setTimeout(() => {
+                  if (!id) {
+                    return;
+                  }
+                  hipanel.progress(`$progressUrl?id=\${id}`, (es) => {
+                    const onPageUnload = function (e) {
+                      e.preventDefault();
+                      e.returnValue = '';
+                      es.close();
+                      hipanel.runProcess(cancelUrl, { id });
+                    }
+                    window.addEventListener('beforeunload', onPageUnload);
+                    progressCanceExport.click(function () {
+                      hipanel.runProcess(cancelUrl, { id });
+                      es.close();
+                      window.removeEventListener('beforeunload', onPageUnload);
+                      resetExport();
                     });
-                  }, 1000);
-                }
+                  }).onMessage((event, es) => {
+                    const data = JSON.parse(event.data);
+                    if (data.status === 'running') {
+                      progressText.text(data.taskName || 'Running');
+                      const percentComplete = Math.floor((data.progress / data.total) * 100) + '%';
+                      progress.css('width', percentComplete);
+                      progressNumber.text(data.progress > 0 ? data.progress + ' / ' + data.total + ' ' + (data.unit || '') : '...');
+                    } else {
+                      progress.css('width', '100%');
+                      progressNumber.text('');
+                      progressCanceExport.hide(() => {
+                        es.close();
+                      });
+                      if (data.status === 'success') {
+                        downloadWithProggress(id, url.searchParams.get('format'));
+                      } else {
+                        hipanel.notify.error(`Status: \${data.status}\nMessage: \${data.errorMessage}`);
+                        resetExport();
+                      }
+                    }
+                  });
+                }, 1000);
               }
-              $(document).on('click', 'a.export-report-link', startExport);
+//              $(document).on('click', 'a.export-report-link', startExport);
+              $('a.export-report-link').exporter();
             })($);
         ");
 
@@ -171,7 +203,7 @@ class IndexPageExportLinks extends Widget
                     'class' => 'export-report-link',
                     'data' => [
                         'id' => time(),
-                        'background-export-url' => $this->combineUrl('background-export', $type),
+                        'export-url' => $this->combineUrl('start-export', $type),
                     ],
                 ],
             ];
