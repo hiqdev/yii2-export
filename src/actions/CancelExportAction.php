@@ -1,26 +1,18 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace hiqdev\yii2\export\actions;
 
 use hipanel\actions\IndexAction;
 use hiqdev\yii2\export\models\ExportJob;
-use hiqdev\yii2\export\models\SaveManager;
 use Yii;
 
 class CancelExportAction extends IndexAction
 {
-    public function run()
+    public function run(): void
     {
-        $id = $this->controller->request->post('id');
-        /** @var ExportJob $job */
-        $job = Yii::$app->exporter->getJob($id);
-        if ($job) {
-            $job->deleteJob();
-            $saver = new SaveManager($id);
-            $saver->delete();
-        }
+        $id = $this->controller->request->post('id', '');
+        $job = ExportJob::findOrNew($id);
+        $job->delete();
         Yii::$app->end();
     }
 }

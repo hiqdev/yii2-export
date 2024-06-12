@@ -1,14 +1,13 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace hiqdev\yii2\export\models;
 
-class XlsxSettings extends \yii\base\Model
+use yii\base\Model;
+
+class XlsxSettings extends Model
 {
     use SettingsTrait;
 
-    /**
-     * @inheritdoc
-     */
     public function rules()
     {
         return [];

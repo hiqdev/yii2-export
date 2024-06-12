@@ -1,21 +1,19 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace hiqdev\yii2\export\exporters;
 
-use hiqdev\yii2\export\models\SaveManager;
+use hiqdev\yii2\export\models\ExportJob;
 
 class MDExporter extends AbstractExporter
 {
-    public Type $exportType = Type::MD;
+    public ExportType $exportType = ExportType::MD;
 
     public function getMimeType(): string
     {
         return 'text/plain';
     }
 
-    public function export(SaveManager $saveManager): void
+    public function export(ExportJob $job): void
     {
         $rows = [];
         $header = $this->generateHeader();
@@ -26,7 +24,7 @@ class MDExporter extends AbstractExporter
         $widths = $this->calculateWidths([$header, ...$rows]);
         $mdTable = $this->renderHeader($header, $widths);
         $mdTable .= $this->renderRows($rows, $widths);
-        $saveManager->save($mdTable);
+        $job->getSaver()->save($mdTable);
     }
 
     protected function renderHeader(array $header, array $widths): string

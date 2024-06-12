@@ -1,67 +1,72 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace hiqdev\yii2\export\models;
 
-use hiqdev\yii2\export\components\Exporter;
-use hiqdev\yii2\export\exporters\ExporterInterface;
+use hiqdev\yii2\export\helpers\ExportJobStorage;
+use hiqdev\yii2\export\helpers\SaveManager;
+use hiqdev\yii2\export\models\enums\ExportStatus;
+use RuntimeException;
 use Yii;
 use yii\base\Model;
-use function Opis\Closure\serialize;
-use function Opis\Closure\unserialize;
 
-/**
- *
- * @property-read string $filename
- */
 class ExportJob extends Model
 {
-    public const string STATUS_NEW = 'new';
-    public const string STATUS_RUNNING = 'running';
-    public const string STATUS_SUCCESS = 'success';
-    public const string STATUS_ERROR = 'error';
-    public const string STATUS_CANCEL = 'cancel';
-
     public ?int $runTs = null;
     public ?int $createTs = null;
     public ?int $finishTs = null;
     public ?string $errorMessage = null;
-    public string $status = self::STATUS_NEW;
     public int $progress = 0;
     public int $total = 0;
     public ?string $taskName = null;
     public ?string $unit = null;
+    public ?string $mimeType = null;
     public ?string $extension = null;
+    public string $status = ExportStatus::NEW->value;
+
+    private string $id;
+    private SaveManager $saver;
+    private ExportJobStorage $storage;
+
+    public function extraFields(): array
+    {
+        return ['id', 'status'];
+    }
+
+    public function toArray(array $fields = [], array $expand = [], $recursive = true)
+    {
+        return parent::toArray($fields, array_merge($expand, ['id', 'status']), $recursive);
+    }
 
     public function init(): void
     {
         $this->createTs = time();
-    }
-
-    public function prepare(string $id): void
-    {
-        $this->id = $id;
-    }
-
-    public static function find(string $id): ?self
-    {
-        $content = Yii::$app->cache->get([$id, 'job']);
-        if ($content === false) {
-            return null;
+        $this->status = ExportStatus::NEW->value;
+        if (!$this->id) {
+            throw new RuntimeException('ExportJob id is required');
         }
-        $job = unserialize($content);
-        if (!empty($job) && $job instanceof ExportJob) {
-            return $job;
+        if (empty($this->taskName)) {
+            $this->taskName = Yii::t('hiqdev.export', 'Initialization');
         }
-
-        return null;
+        $this->saver = new SaveManager($this);
+        $this->storage = new ExportJobStorage($this);
     }
 
-    public function increaseProgress(?int $count = 1): void
+    public static function findOrNew(string $id): self
+    {
+        $job = new self(['id' => $id]);
+        if ($job->storage->exists()) {
+            $content = $job->storage->fetch();
+            $job->setAttributes($content, false);
+        }
+
+        return $job;
+    }
+
+    public function increaseProgress(?int $count = 1): self
     {
         $this->progress += $count;
-        Yii::$app->exporter->setJob($this->id, $this);
+
+        return $this;
     }
 
     public function getProgress(): int
@@ -74,54 +79,38 @@ class ExportJob extends Model
         return $this->id;
     }
 
-    public function getStatus(): string
-    {
-        return $this->status;
-    }
-
     public function getErrorMessage(): ?string
     {
         return $this->errorMessage;
     }
 
-    public function begin(Exporter $exporter): void
+    public function begin(string $mimeType, string $extension): void
     {
-        $this->status = self::STATUS_RUNNING;
+        $this->mimeType = $mimeType;
+        $this->extension = $extension;
+        $this->status = ExportStatus::RUNNING->value;
         $this->runTs = time();
-
-        $exporter->setJob($this->id, $this);
+        $this->storage->save();
     }
 
-    public function end(Exporter $exporter, bool $isSuccess = true, ?string $errorMessage = null): void
+    public function end(bool $isSuccess = true, ?string $errorMessage = null): void
     {
         $this->finishTs = time();
-
         if ($isSuccess) {
-            $this->status = self::STATUS_SUCCESS;
+            $this->status = ExportStatus::SUCCESS->value;
         } else {
-            $this->status = self::STATUS_ERROR;
+            $this->status = ExportStatus::ERROR->value;
             $this->errorMessage = $errorMessage;
         }
-
-        $exporter->setJob($this->id, $this);
+        $this->storage->save();
     }
 
-    public function deleteJob(): bool
+    public function cancel(?string $message = null): void
     {
-        return Yii::$app->cache->delete([$this->id, 'job']);
-    }
-
-    public function run(ExporterInterface $exporter, Exporter $component): void
-    {
-        $exporter->exportJob = $this;
-        $exporter->exporter = $component;
-        $saver = new SaveManager($this->id);
-        $exporter->export($saver);
-    }
-
-    public function getFilename(): string
-    {
-        return implode('.', ['report_' . $this->id, $this->extension]);
+        $this->finishTs = time();
+        $this->status = ExportStatus::CANCEL->value;
+        $this->errorMessage = $message;
+        $this->storage->save();
     }
 
     public function getTotal(): int
@@ -160,16 +149,36 @@ class ExportJob extends Model
         return $this;
     }
 
-    public function isAlive(): true
+    public function isNew(): bool
     {
-        if (Yii::$app->cache->exists([$this->id, 'job'])) {
-            return true;
-        }
-        throw new \Exception('Job is not found');
+        return ExportStatus::tryFrom($this->status) === ExportStatus::NEW;
     }
 
-    private function save(): bool
+    public function setId(string $id): void
     {
-        return Yii::$app->cache->set([$this->id, 'job'], serialize($this), 3600 * 4);
+        $this->id = $id;
+    }
+
+    public function getSaver(): SaveManager
+    {
+        return $this->saver;
+    }
+
+    public function commit(): self
+    {
+        $this->storage->save();
+
+        return $this;
+    }
+
+    public function isAlive(): bool
+    {
+        return $this->storage->exists();
+    }
+
+    public function delete(): void
+    {
+        $this->storage->delete();
+        $this->saver->delete();
     }
 }

@@ -6,9 +6,9 @@
       downloadUrl: "download-export",
       cancelUrl: "cancel-export",
       messages: {
+        step0: "Initialization",
         step1: "Downloading",
-        step2: "Initialization",
-        step3: "Wait until the report is downloaded",
+        step2: "Wait until the report is downloaded",
       },
     }, options);
 
@@ -16,26 +16,26 @@
       const bar = $("#export-progress-box");
       const progress = bar.find(".progress-bar").eq(0);
       const progressText = bar.find(".progress-text").eq(0);
-      const progressNumber = bar.find(".progress-number").eq(0);
-      const progressDescription = bar.find(".progress-description").eq(0);
-      const progressCanceExport = bar.find("button").eq(0);
+      const progressNumberText = bar.find(".progress-number").eq(0);
+      const progressDescriptionText = bar.find(".progress-description").eq(0);
+      const progressCanceExportButton = bar.find("button").eq(0);
       const exportBtn = $("#export-btn");
 
       const resetExportUI = function () {
         bar.hide(500, () => {
           progressText.text("");
-          progressNumber.text("");
-          progressDescription.text("");
+          progressNumberText.text("");
+          progressDescriptionText.text("");
           exportBtn.attr("disabled", false).removeClass("disabled");
           progress.css("width", 0);
-          progressCanceExport.show();
+          progressCanceExportButton.show();
         });
       };
 
-      const beginExportUi = function () {
+      const beginExportUi = function (callback) {
         exportBtn.attr("disabled", true).addClass("disabled");
-        bar.show(500, () => progressText.text("$step1Msg"));
         progress.css("width", "100%");
+        bar.show(500, () => callback());
       };
 
       const startExport = (event) => {
@@ -43,55 +43,49 @@
         if (!window.EventSource) {
           return;
         }
-        const exportUrl = event.target.dataset.exportUrl;
-        const cancelUrl = "cancel-export";
-        const id = event.target.dataset["id"];
-        const url = new URL(exportUrl);
-        beginExportUi();
-        const process = hipanel.process();
-        process.onSuccess(function (data, status) {
-          debugger
-          // hipanel.progress(settings.progressUrl, (es) => {
-          //   const onPageUnload = function (e) {
-          //     e.preventDefault();
-          //     e.returnValue = "";
-          //     es.close();
-          //     hipanel.runProcess(cancelUrl, { id });
-          //   };
-          //   window.addEventListener("beforeunload", onPageUnload);
-          //   progressCanceExport.click(function () {
-          //     hipanel.runProcess(cancelUrl, { id });
-          //     es.close();
-          //     window.removeEventListener("beforeunload", onPageUnload);
-          //     resetExportUI();
-          //   });
-          // }).onMessage((event, es) => {
-          //   const data = JSON.parse(event.data);
-          //   if (data.status === "running") {
-          //     progressText.text(data.taskName || "Running");
-          //     const percentComplete = Math.floor((data.progress / data.total) * 100) + "%";
-          //     progress.css("width", percentComplete);
-          //     progressNumber.text(data.progress > 0 ? data.progress + " / " + data.total + " " + (data.unit || "") : "...");
-          //   } else {
-          //     progress.css("width", "100%");
-          //     progressNumber.text("");
-          //     progressCanceExport.hide(() => {
-          //       es.close();
-          //     });
-          //     if (data.status === "success") {
-          //       downloadWithProggress(id, url.searchParams.get("format"));
-          //     } else {
-          //       hipanel.notify.error(`Status: \${data.status}\nMessage: \${data.errorMessage}`);
-          //       resetExportUI();
-          //     }
-          //   }
-          // });
+        const startExportUrl = event.target.dataset.exportUrl;
+        const cancelExportUrl = settings.cancelUrl;
+        const id = event.target.dataset.id;
+        beginExportUi(() => hipanel.runProcess(startExportUrl, { id: id }));
+        hipanel.progress(`${settings.progressUrl}?id=${id}`, (es) => {
+          const onPageUnload = function (e) {
+            e.preventDefault();
+            e.returnValue = "";
+            es.close();
+            hipanel.runProcess(cancelExportUrl, { id });
+          };
+          window.addEventListener("beforeunload", onPageUnload);
+          progressCanceExportButton.click(function () {
+            hipanel.runProcess(cancelExportUrl, { id });
+            es.close();
+            window.removeEventListener("beforeunload", onPageUnload);
+            resetExportUI();
+          });
+        }).onMessage((event, es) => {
+          const data = JSON.parse(event.data);
+          if (data.status === "running") {
+            progressText.text(data.taskName || "Running");
+            const percentComplete = Math.floor((data.progress / data.total) * 100) + "%";
+            progress.css("width", percentComplete);
+            progressNumberText.text(data.progress > 0 ? data.progress + " / " + data.total + " " + (data.unit || "") : "...");
+          } else {
+            progress.css("width", "100%");
+            progressNumberText.text("");
+            progressCanceExportButton.hide(() => {
+              es.close();
+            });
+            if (data.status === "success") {
+              downloadWithProggress(id, new URL(startExportUrl).searchParams.get("format"));
+            } else {
+              hipanel.notify.error(`Status: \${data.status}\nMessage: \${data.errorMessage}`);
+              resetExportUI();
+            }
+          }
         });
-        process.run(exportUrl);
       };
 
       const downloadWithProggress = (id, ext) => {
-        progressText.text("$step0Msg");
+        progressText.text(settings.messages.step1);
         const xhr = $.ajaxSettings.xhr();
         xhr.onreadystatechange = function () {
           if (this.readyState === 4 && this.status === 200) {
@@ -153,15 +147,15 @@
           if (event.lengthComputable) {
             const percentComplete = Math.floor((event.loaded / event.total) * 100) + "%";
             progress.css("width", percentComplete);
-            progressNumber.text(percentComplete);
-            progressDescription.text("$step4Msg");
+            progressNumberText.text(percentComplete);
+            progressDescriptionText.text("$step4Msg");
             if (percentComplete === "100%") {
               resetExportUI();
             }
           }
         };
         xhr.responseType = ext === "md" ? "text" : "blob";
-        xhr.open("GET", "$downloadUrl" + "?id=" + id, true);
+        xhr.open("GET", settings.downloadUrl + "?id=" + id, true);
         xhr.send();
       };
 

@@ -2,7 +2,7 @@
 
 namespace hiqdev\yii2\export\exporters;
 
-enum Type: string
+enum ExportType: string
 {
     case CSV = 'csv';
     case TSV = 'tsv';

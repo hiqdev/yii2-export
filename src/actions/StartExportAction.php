@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace hiqdev\yii2\export\actions;
 
@@ -10,21 +8,17 @@ use Yii;
 
 class StartExportAction extends IndexAction
 {
-    public function run()
+    public function run(): void
     {
-        $jobId = time();
         if ($this->controller->request->isAjax) {
             $action = new RunProcessAction('start-export', $this->controller);
-            $action->onGettingProcessId = fn() => $jobId;
-            $action->onRunProcess = function () use ($jobId) {
+            $action->onRunProcess = function () {
+                $id = $this->controller->request->post('id');
                 $representation = $this->ensureRepresentationCollection()->getByName($this->getUiModel()->representation);
-
-                Yii::$app->exporter->runJob((string)$jobId, $this, $representation->getColumns()); // todo: fire event!
+                Yii::$app->exporter->runJob($id, $this, $representation->getColumns());
             };
-
             $action->run();
         }
-
-//        return $this->controller->asJson(['jobId' => $jobId]);
+        Yii::$app->end();
     }
 }

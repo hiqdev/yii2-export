@@ -1,38 +1,32 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace hiqdev\yii2\export\actions;
 
 use hipanel\actions\ProgressAction;
-use hiqdev\yii2\export\components\Exporter;
+use hiqdev\yii2\export\models\enums\ExportStatus;
 use hiqdev\yii2\export\models\ExportJob;
-use Yii;
 
 class ProgressExportAction extends ProgressAction
 {
     public function init(): void
     {
         $this->onProgress = function () {
-            $id = $this->controller->request->get('id');
-            /** @var Exporter $exporter */
-            $exporter = Yii::$app->exporter;
-            if (!$exporter->isExistsJob($id)) {
+            $id = $this->controller->request->get('id', '');
+            $job = ExportJob::findOrNew($id);
+            if ($job->isNew()) {
                 return json_encode(
-                    ['id' => $id, 'status' => ExportJob::STATUS_RUNNING, 'progress' => 0],
+                    ['id' => $id, 'status' => ExportStatus::RUNNING->value, 'progress' => 0],
                     JSON_THROW_ON_ERROR
                 );
             }
-            $job = $exporter->getJob($id);
-            $status = $job->getStatus();
             $this->needsToBeEnd = in_array(
-                $status,
-                [ExportJob::STATUS_SUCCESS, ExportJob::STATUS_ERROR, ExportJob::STATUS_CANCEL],
+                $job->status,
+                [ExportStatus::SUCCESS->value, ExportStatus::ERROR->value, ExportStatus::CANCEL->value],
                 true
             );
             $data = $job->toArray();
 
-            return json_encode($job->toArray(), JSON_THROW_ON_ERROR);
+            return json_encode($data, JSON_THROW_ON_ERROR);
         };
     }
 }
