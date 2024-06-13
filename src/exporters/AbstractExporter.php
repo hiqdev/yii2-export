@@ -205,7 +205,7 @@ abstract class AbstractExporter implements ExporterInterface
         }
         $responses = [];
         $chunks = array_chunk($allRequests, 5, true);
-        $job->setTotal(count($chunks))->setTaskName(Yii::t('hiqdev.export', 'Getting data from the DB'))->setUnit('reqs')->commit();
+        $job->setTaskName(Yii::t('hiqdev.export', 'Getting data from the DB'))->setTotal(count($chunks))->setUnit('reqs')->commit();
         foreach ($chunks as $requests) {
             foreach ($connection->sendPool($requests) as $response) {
                 $responses[] = $response;
