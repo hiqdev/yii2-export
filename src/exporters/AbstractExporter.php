@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace hiqdev\yii2\export\exporters;
 
@@ -31,7 +31,7 @@ abstract class AbstractExporter implements ExporterInterface
     public ?GridView $grid = null;
     public ?ExportJob $exportJob = null;
     public bool $exportFooter = true;
-    public int $batchSize = 5;
+    public int $batchSize = 4000;
     public string $target;
     public ExportType $exportType;
     protected ?string $gridClassName = null;
@@ -203,19 +203,21 @@ abstract class AbstractExporter implements ExporterInterface
             $dp->pagination->page = $page;
             $dp->refresh(keepTotalCount: true);
         }
-        $data = [];
+        $responses = [];
         $chunks = array_chunk($allRequests, 5, true);
         $job->setTotal(count($chunks))->setTaskName(Yii::t('hiqdev.export', 'Getting data from the DB'))->setUnit('reqs')->commit();
         foreach ($chunks as $requests) {
-            foreach ($connection->sendPool($requests) as $datum) {
-                $data[] = [...$datum];
+            foreach ($connection->sendPool($requests) as $response) {
+                $responses[] = $response;
             }
             $this->exportJob->increaseProgress()->commit();
         }
         $job->setTaskName(Yii::t('hiqdev.export', 'Generating a report'))->setTotal($dp->getTotalCount())->setUnit('rows')->commit();
-        foreach ($data as $datum) {
+        foreach ($responses as $response) {
+            $data = [...$response->getData()];
+            $query = $response->getRequest()->getQuery();
             $rows = [];
-            $models = $dp->query->populate($datum);
+            $models = $query->populate($data);
             foreach ($models as $index => $model) {
                 $rows[] = $this->compileRow($model, $model->id, $index);
                 $job->increaseProgress()->commit();

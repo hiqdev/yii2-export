@@ -28,7 +28,7 @@ $this->registerCss("
             </div>
             <span class="progress-description text-muted"></span>
         </div>
-        <button type="button" class="btn btn-danger btn-xs pull-right"><?= Yii::t('hiqdev.export', 'Cancel export') ?></button>
+        <button type="button" class="btn btn-danger btn-xs pull-right hidden"><?= Yii::t('hiqdev.export', 'Cancel export') ?></button>
     </div>
 
 </div>

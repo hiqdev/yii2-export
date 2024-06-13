@@ -77,7 +77,7 @@
             if (data.status === "success") {
               downloadWithProggress(id, new URL(startExportUrl).searchParams.get("format"));
             } else {
-              hipanel.notify.error(`Status: \${data.status}\nMessage: \${data.errorMessage}`);
+              hipanel.notify.error(`Status: ${data.status}\nMessage: ${data.errorMessage}`);
               resetExportUI();
             }
           }
@@ -148,7 +148,7 @@
             const percentComplete = Math.floor((event.loaded / event.total) * 100) + "%";
             progress.css("width", percentComplete);
             progressNumberText.text(percentComplete);
-            progressDescriptionText.text("$step4Msg");
+            progressDescriptionText.text("Wait until the report is downloaded");
             if (percentComplete === "100%") {
               resetExportUI();
             }
