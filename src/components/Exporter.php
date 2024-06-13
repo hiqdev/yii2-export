@@ -28,7 +28,7 @@ class Exporter extends Component
         parent::__construct($config);
     }
 
-    public function prepare(IndexAction $action, array $representationColumns): ExporterInterface
+    public function prepareExporter(IndexAction $action, array $representationColumns): ExporterInterface
     {
         $exporter = $this->createExporter($action, $representationColumns);
         $exporter->initExportOptions();
@@ -38,9 +38,11 @@ class Exporter extends Component
 
     public function runJob(string $id, StartExportAction $action, array $representationColumns): void
     {
-        $exporter = $this->prepare($action, $representationColumns);
+        $exporter = $this->prepareExporter($action, $representationColumns);
         $job = ExportJob::findOrNew($id);
+        $exporter->exportJob = $job;
         if ($job->isNew()) {
+            $job->begin($exporter->getMimeType(), $exporter->exportType->value);
             try {
                 $exporter->export($job);
                 $job->end();

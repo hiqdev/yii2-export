@@ -120,7 +120,6 @@ abstract class AbstractExporter implements ExporterInterface
      */
     public function export(ExportJob $job): void
     {
-        $this->prepareJob($job);
         static::applyExportFormatting();
 
         $writer = WriterEntityFactory::createWriter($this->exportType->value);
@@ -341,11 +340,5 @@ abstract class AbstractExporter implements ExporterInterface
         ];
 
         return $formatter;
-    }
-
-    protected function prepareJob(ExportJob $job): void
-    {
-        $this->exportJob = $job;
-        $job->begin($this->getMimeType(), $this->exportType->value);
     }
 }
