@@ -1,18 +1,16 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace hiqdev\yii2\export\models;
 
-class CsvSettings extends \yii\base\Model
+use yii\base\Model;
+
+class CsvSettings extends Model
 {
     use SettingsTrait;
 
-    public $fieldDelimiter = ",";
+    public string $fieldDelimiter = ",";
+    public string $fieldEnclosure = '"';
 
-    public $fieldEnclosure = '"';
-
-    /**
-     * @inheritdoc
-     */
     public function rules()
     {
         return [

@@ -6,7 +6,7 @@ namespace hiqdev\yii2\export\actions;
 
 use hipanel\actions\IndexAction;
 use hiqdev\yii2\export\exporters\ExporterInterface;
-use hiqdev\yii2\export\models\SaveManager;
+use hiqdev\yii2\export\helpers\SaveManager;
 use yii\web\Response;
 use Yii;
 

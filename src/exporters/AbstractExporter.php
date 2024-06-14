@@ -1,24 +1,21 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace hiqdev\yii2\export\exporters;
 
-use Box\Spout\Common\Entity\Row;
 use Box\Spout\Common\Exception\InvalidArgumentException;
 use Box\Spout\Common\Exception\IOException;
 use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
 use Box\Spout\Writer\Exception\WriterNotOpenedException;
 use Box\Spout\Writer\WriterInterface;
 use Exception;
+use hipanel\hiart\hiapi\HiapiConnectionInterface;
+use hipanel\hiart\QueryBuilder;
 use hiqdev\hiart\ActiveDataProvider;
-use hiqdev\yii2\export\components\Exporter;
-use hiqdev\yii2\export\models\BackgroundExport;
-use hiqdev\yii2\export\models\SaveManager;
+use hiqdev\hiart\guzzle\Request;
+use hiqdev\yii2\export\models\ExportJob;
 use hiqdev\yii2\menus\grid\MenuColumn;
 use Yii;
-use yii\db\ActiveRecord;
-use yii\db\Query;
 use yii\grid\DataColumn;
-use yii\db\ActiveQueryInterface;
 use yii\grid\ActionColumn;
 use yii\grid\CheckboxColumn;
 use yii\grid\Column;
@@ -32,12 +29,11 @@ abstract class AbstractExporter implements ExporterInterface
     use GridViewTrait;
 
     public ?GridView $grid = null;
-    public ?BackgroundExport $exportJob = null;
-    public ?Exporter $exporter = null;
+    public ?ExportJob $exportJob = null;
     public bool $exportFooter = true;
-    public int $batchSize = 500;
+    public int $batchSize = 4000;
     public string $target;
-    public Type $exportType;
+    public ExportType $exportType;
     protected ?string $gridClassName = null;
     protected ActiveDataProvider $dataProvider;
     protected array $representationColumns = [];
@@ -59,6 +55,7 @@ abstract class AbstractExporter implements ExporterInterface
     public function setDataProvider(ActiveDataProvider $dataProvider): void
     {
         $this->dataProvider = $dataProvider;
+        $this->dataProvider->enableSynchronousCount();
         $this->dataProvider->pagination->pageSize = $this->batchSize;
     }
 
@@ -116,41 +113,43 @@ abstract class AbstractExporter implements ExporterInterface
     /**
      * Render file content
      *
-     * @param SaveManager $saveManager
      * @throws UnsupportedTypeException
      * @throws IOException
      * @throws InvalidArgumentException
      * @throws WriterNotOpenedException
      */
-    public function export(SaveManager $saveManager): void
+    public function export(ExportJob $job): void
     {
         static::applyExportFormatting();
 
         $writer = WriterEntityFactory::createWriter($this->exportType->value);
         $writer = $this->applySettings($writer);
-        $writer->openToFile($saveManager->getFilePath());
+        $writer->openToFile($job->getSaver()->getFilePath());
         $rows = [];
 
         //header
         $headerRow = $this->generateHeader();
         if (!empty($headerRow)) {
-            $rows[] = $headerRow;
+            $row = WriterEntityFactory::createRowFromArray($headerRow);
+            $rows[] = $row;
         }
 
         //body
         $batches = $this->generateBody();
         foreach ($batches as $batch) {
-            $rows = [...$rows, ...$batch];
+            foreach ($batch as $row) {
+                $rows[] = WriterEntityFactory::createRowFromArray($row);
+            }
         }
 
         //footer
         $footerRow = $this->generateFooter();
         if (!empty($footerRow)) {
-            $rows[] = $footerRow;
+            $row = WriterEntityFactory::createRowFromArray($footerRow);
+            $rows[] = $row;
         }
 
-        $rowObjects = array_map(static fn(array $row): Row => WriterEntityFactory::createRowFromArray($row), $rows);
-        $writer->addRows($rowObjects);
+        $writer->addRows($rows);
 
         $writer->close();
     }
@@ -180,73 +179,65 @@ abstract class AbstractExporter implements ExporterInterface
         return $rows;
     }
 
-    /**
-     * Fetch data from the data provider and create the rows array
-     */
     protected function generateBody(): array
     {
+        $connection = Yii::$container->get(HiapiConnectionInterface::class);
         if (empty($this->grid->columns)) {
             return [];
         }
 
         $batch = [];
         $dp = $this->grid->dataProvider;
+        if (!$dp instanceof ActiveDataProvider) {
+            throw new Exception('DataProvider must be an instance of ActiveDataProvider');
+        }
+        $totalCount = $dp->getTotalCount();
+        $job = $this->exportJob;
+        $dp->pagination->setPageSize($this->batchSize);
+        $dp->pagination->page = 0;
+        $pageCount = ceil($totalCount / $this->batchSize);
 
-        if ($dp instanceof ActiveQueryInterface) {
-            /** @var Query $query */
-            $query = $dp->query;
-            foreach ($query->batch($this->batchSize) as $models) {
-                /**
-                 * @var int $index
-                 * @var ActiveRecord $model
-                 */
-                $rows = [];
-                foreach ($models as $index => $model) {
-                    $key = $model->getPrimaryKey();
-                    $rows[] = $this->generateRow($model, $key, $index);
-                    if ($this->exportJob && $this->exporter) {
-                        $this->exportJob->increaseProgress();
-                    }
-                }
-                $batch[] = [...$rows];
+        foreach (range(1, $pageCount) as $page) {
+            $allRequests[] = $this->composeRequest($connection, $dp);
+            $dp->pagination->page = $page;
+            $dp->refresh(keepTotalCount: true);
+        }
+        $responses = [];
+        $chunks = array_chunk($allRequests, 5, true);
+        $job->setTaskName(Yii::t('hiqdev.export', 'Getting data from the DB'))->setTotal(count($chunks))->setUnit('reqs')->commit();
+        foreach ($chunks as $requests) {
+            foreach ($connection->sendPool($requests) as $response) {
+                $responses[] = $response;
             }
-        } else {
-            $dp->pagination->setPageSize($this->batchSize);
-            $dp->pagination->page = 1;
-//            $dp->refresh(keepTotalCount: true);
-            $models = $dp->getModels();
-            while (count($models) > 0) {
-                $rows = [];
-                foreach ($models as $index => $model) {
-                    $rows[] = $this->generateRow($model, $model->id, $index);
-                    if ($this->exportJob && $this->exporter) {
-                        $this->exportJob->increaseProgress();
-                    }
-                }
-                $batch[] = [...$rows];
-                if ($dp->pagination) {
-                    $dp->pagination->page++;
-                    $dp->refresh(keepTotalCount: true);
-                    unset($models);
-                    $models = $dp->getModels();
-                } else {
-                    $models = [];
-                }
+            $this->exportJob->increaseProgress()->commit();
+        }
+        $job->setTaskName(Yii::t('hiqdev.export', 'Generating a report'))->setTotal($dp->getTotalCount())->setUnit('rows')->commit();
+        foreach ($responses as $response) {
+            $data = [...$response->getData()];
+            $query = $response->getRequest()->getQuery();
+            $rows = [];
+            $models = $query->populate($data);
+            foreach ($models as $index => $model) {
+                $rows[] = $this->compileRow($model, $model->id, $index);
+                $job->increaseProgress()->commit();
             }
+            $batch[] = [...$rows];
         }
 
         return $batch;
     }
 
-    /**
-     * Generate the row array
-     *
-     * @param $model
-     * @param $key
-     * @param $index
-     * @return array
-     */
-    protected function generateRow($model, $key, $index): array
+    public function composeRequest($connection, $dataProvider): Request
+    {
+        $query = $dataProvider->prepareQuery();
+        $query->from = $query->modelClass::tableName();
+        $query->addAction('search');
+        $query->addOption('batch', true);
+
+        return new Request(new QueryBuilder($connection), $query);
+    }
+
+    protected function compileRow($model, $key, $index): array
     {
         $row = [];
         foreach ($this->grid->columns as $column) {
@@ -261,15 +252,6 @@ abstract class AbstractExporter implements ExporterInterface
         return $row;
     }
 
-    /**
-     * Get the column generated value from the column
-     *
-     * @param $model
-     * @param $key
-     * @param $index
-     * @param Column $column
-     * @return string|null
-     */
     protected function getColumnValue($model, $key, $index, Column $column): ?string
     {
         if ($column instanceof ActionColumn || $column instanceof CheckboxColumn) {

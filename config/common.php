@@ -8,9 +8,14 @@
  * @copyright Copyright (c) 2017, HiQDev (http://hiqdev.com/)
  */
 
-use hiqdev\yii2\export\exporters\Type;
+use hiqdev\yii2\export\exporters\ExportType;
 
 return [
+    'controllerMap' => [
+        'exporter' => [
+            \hiqdev\yii2\export\commands\ExporterController::class
+        ],
+    ],
     'components' => [
         'i18n' => [
             'translations' => [
@@ -30,10 +35,10 @@ return [
                 ['class' => \hiqdev\yii2\export\exporters\ExporterFactory::class],
                 [
                     [
-                        Type::CSV->value => \hiqdev\yii2\export\exporters\CsvExporter::class,
-                        Type::TSV->value => \hiqdev\yii2\export\exporters\TsvExporter::class,
-                        Type::XLSX->value => \hiqdev\yii2\export\exporters\XlsxExporter::class,
-                        Type::MD->value => \hiqdev\yii2\export\exporters\MDExporter::class,
+                        ExportType::CSV->value => \hiqdev\yii2\export\exporters\CsvExporter::class,
+                        ExportType::TSV->value => \hiqdev\yii2\export\exporters\TsvExporter::class,
+                        ExportType::XLSX->value => \hiqdev\yii2\export\exporters\XlsxExporter::class,
+                        ExportType::MD->value => \hiqdev\yii2\export\exporters\MDExporter::class,
                     ],
                 ],
             ],

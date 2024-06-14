@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace hiqdev\yii2\export\actions;
 
@@ -8,12 +6,12 @@ use hipanel\actions\IndexAction;
 use hipanel\actions\RunProcessAction;
 use Yii;
 
-class BackgroundExportAction extends IndexAction
+class StartExportAction extends IndexAction
 {
     public function run(): void
     {
         if ($this->controller->request->isAjax) {
-            $action = new RunProcessAction('background-export', $this->controller);
+            $action = new RunProcessAction('start-export', $this->controller);
             $action->onRunProcess = function () {
                 $id = $this->controller->request->post('id');
                 $representation = $this->ensureRepresentationCollection()->getByName($this->getUiModel()->representation);

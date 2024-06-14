@@ -1,9 +1,8 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace hiqdev\yii2\export\helpers;
 
-namespace hiqdev\yii2\export\models;
-
+use hiqdev\yii2\export\models\ExportJob;
 use Yii;
 use yii\helpers\FileHelper;
 
@@ -11,7 +10,7 @@ class SaveManager
 {
     private string $path = '@runtime/export-reports';
 
-    public function __construct(private readonly string $id)
+    public function __construct(private readonly ExportJob $job)
     {
         FileHelper::createDirectory($this->getPath());
     }
@@ -34,9 +33,9 @@ class SaveManager
     /**
      * @return false|resource
      */
-    public function getStream(string $mimeType)
+    public function getStream()
     {
-        return fopen('data://' . $mimeType . ';base64,' . base64_encode($this->getContent()), 'rb');
+        return fopen('data://' . $this->job->mimeType . ';base64,' . base64_encode($this->getContent()), 'rb');
     }
 
     public function getContent(): string
@@ -44,9 +43,14 @@ class SaveManager
         return file_get_contents($this->getFilePath());
     }
 
+    public function getFilename(): string
+    {
+        return implode('.', ['report_' . $this->job->id, $this->job->extension]);
+    }
+
     public function getFilePath(): string
     {
-        return $this->getPath() . DIRECTORY_SEPARATOR . $this->id;
+        return $this->getPath() . DIRECTORY_SEPARATOR . $this->job->id;
     }
 
     private function getPath(): string
