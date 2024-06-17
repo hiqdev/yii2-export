@@ -270,7 +270,7 @@ abstract class AbstractExporter implements ExporterInterface
         }
         $column->value = $savedValue;
 
-        return $output;
+        return (string)$output;
     }
 
     /**
