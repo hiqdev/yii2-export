@@ -46,41 +46,44 @@
         const startExportUrl = event.target.dataset.exportUrl;
         const cancelExportUrl = settings.cancelUrl;
         const id = event.target.dataset.id;
-        beginExportUi(() => hipanel.runProcess(startExportUrl, { id: id }));
-        hipanel.progress(`${settings.progressUrl}?id=${id}`, (es) => {
-          const onPageUnload = function (e) {
-            e.preventDefault();
-            e.returnValue = "";
-            es.close();
-            hipanel.runProcess(cancelExportUrl, { id });
-          };
-          window.addEventListener("beforeunload", onPageUnload);
-          progressCanceExportButton.click(function () {
-            hipanel.runProcess(cancelExportUrl, { id });
-            es.close();
-            window.removeEventListener("beforeunload", onPageUnload);
-            resetExportUI();
-          });
-        }).onMessage((event, es) => {
-          const data = JSON.parse(event.data);
-          if (data.status === "running") {
-            progressText.text(data.taskName || "Running");
-            const percentComplete = Math.floor((data.progress / data.total) * 100) + "%";
-            progress.css("width", percentComplete);
-            progressNumberText.text(data.progress > 0 ? data.progress + " / " + data.total + " " + (data.unit || "") : "...");
-          } else {
-            progress.css("width", "100%");
-            progressNumberText.text("");
-            progressCanceExportButton.hide(() => {
-              es.close();
+        beginExportUi(() => {
+          hipanel.runProcess(startExportUrl, { id: id }, null, () => {
+            hipanel.progress(`${settings.progressUrl}?id=${id}`, (es) => {
+              const onPageUnload = function (e) {
+                e.preventDefault();
+                e.returnValue = "";
+                es.close();
+                hipanel.runProcess(cancelExportUrl, { id });
+              };
+              window.addEventListener("beforeunload", onPageUnload);
+              progressCanceExportButton.click(function () {
+                hipanel.runProcess(cancelExportUrl, { id });
+                es.close();
+                window.removeEventListener("beforeunload", onPageUnload);
+                resetExportUI();
+              });
+            }).onMessage((event, es) => {
+              const data = JSON.parse(event.data);
+              if (data.status === "running") {
+                progressText.text(data.taskName || "Running");
+                const percentComplete = Math.floor((data.progress / data.total) * 100) + "%";
+                progress.css("width", percentComplete);
+                progressNumberText.text(data.progress > 0 ? data.progress + " / " + data.total + " " + (data.unit || "") : "...");
+              } else {
+                progress.css("width", "100%");
+                progressNumberText.text("");
+                progressCanceExportButton.hide(() => {
+                  es.close();
+                });
+                if (data.status === "success") {
+                  downloadWithProggress(id, new URL(startExportUrl).searchParams.get("format"));
+                } else {
+                  hipanel.notify.error(`Status: ${data.status}\nMessage: ${data.errorMessage}`);
+                  resetExportUI();
+                }
+              }
             });
-            if (data.status === "success") {
-              downloadWithProggress(id, new URL(startExportUrl).searchParams.get("format"));
-            } else {
-              hipanel.notify.error(`Status: ${data.status}\nMessage: ${data.errorMessage}`);
-              resetExportUI();
-            }
-          }
+          });
         });
       };
 
