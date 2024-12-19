@@ -241,11 +241,7 @@ abstract class AbstractExporter implements ExporterInterface
     {
         $row = [];
         foreach ($this->grid->columns as $column) {
-            try {
-                $value = $this->getColumnValue($model, $key, $index, $column);
-            } catch (Exception $exception) {
-                $value = implode("\n", ['!--->', $exception->getMessage(), ...$model->toArray()]);
-            }
+            $value = $this->getColumnValue($model, $key, $index, $column);
             $row[] = is_string($value) ? $this->sanitizeRow($value) : $value;
         }
 
@@ -270,7 +266,7 @@ abstract class AbstractExporter implements ExporterInterface
         }
         $column->value = $savedValue;
 
-        return (string)$output;
+        return $output;
     }
 
     /**

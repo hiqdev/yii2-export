@@ -2,6 +2,7 @@
 
 namespace hiqdev\yii2\export\components;
 
+use Exception;
 use hipanel\actions\IndexAction;
 use hipanel\base\Controller;
 use hipanel\widgets\SynchronousCountEnabler;
@@ -23,6 +24,8 @@ use yii\grid\GridView;
 
 class Exporter extends Component
 {
+    private ?ExportJob $job = null;
+
     public function __construct(public ExporterFactoryInterface $exporterFactory, $config = [])
     {
         parent::__construct($config);
@@ -39,21 +42,28 @@ class Exporter extends Component
     public function runJob(string $id, StartExportAction $action, array $representationColumns): void
     {
         $exporter = $this->prepareExporter($action, $representationColumns);
-        $job = ExportJob::findOrNew($id);
-        $exporter->exportJob = $job;
-        if ($job->isNew()) {
-            $job->begin($exporter->getMimeType(), $exporter->exportType->value);
+        $this->job = ExportJob::findOrNew($id);
+        $exporter->exportJob = $this->job;
+        if ($this->job->isNew()) {
+            $this->job->begin($exporter->getMimeType(), $exporter->exportType->value);
             try {
-                $exporter->export($job);
-                $job->end();
+                $exporter->export($this->job);
+                $this->job->end();
             } catch (StaleExportJobException $e) {
-                $job->cancel($e->getMessage());
-            } catch (\Exception $e) {
-                $job->cancel($e->getMessage());
+                $this->job->cancel($e->getMessage());
+            } catch (Exception $e) {
+                $this->job->cancel($e->getMessage());
                 Yii::error('Export: ' . $e->getMessage());
             }
         } else {
-            Yii::error('Export: The export job must be STATUS_NEW.');
+            Yii::error('Export: The export job must be STATUS_NEW. ' . $this->job->errorMessage);
+        }
+    }
+
+    public function __destruct()
+    {
+        if (!$this->job->isSuccess()) {
+            $this->job->cancel('There was probably an internal error during Report generating. Contact the development team.');
         }
     }
 

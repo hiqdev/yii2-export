@@ -176,6 +176,11 @@ class ExportJob extends Model
         return $this->storage->exists();
     }
 
+    public function isSuccess(): bool
+    {
+        return $this->status === ExportStatus::SUCCESS->value;
+    }
+
     public function delete(): void
     {
         $this->storage->delete();

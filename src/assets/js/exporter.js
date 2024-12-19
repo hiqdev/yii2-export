@@ -48,7 +48,7 @@
         const id = event.target.dataset.id;
         beginExportUi(() => {
           hipanel.runProcess(startExportUrl, { id: id }, null, () => {
-            hipanel.progress(`${settings.progressUrl}?id=${id}`, (es) => {
+            const {onMessage, onError } = hipanel.progress(`${settings.progressUrl}?id=${id}`, (es) => {
               const onPageUnload = function (e) {
                 e.preventDefault();
                 e.returnValue = "";
@@ -62,26 +62,38 @@
                 window.removeEventListener("beforeunload", onPageUnload);
                 resetExportUI();
               });
-            }).onMessage((event, es) => {
+            });
+            onMessage((event, es) => {
               const data = JSON.parse(event.data);
-              if (data.status === "running") {
-                progressText.text(data.taskName || "Running");
-                const percentComplete = Math.floor((data.progress / data.total) * 100) + "%";
-                progress.css("width", percentComplete);
-                progressNumberText.text(data.progress > 0 ? data.progress + " / " + data.total + " " + (data.unit || "") : "...");
+              if ('errorMessage' in data && data.errorMessage) {
+                es.close();
+                hipanel.notify.error(`Status: ${data.status}\nMessage: ${data.errorMessage}`);
+                resetExportUI();
               } else {
-                progress.css("width", "100%");
-                progressNumberText.text("");
-                progressCanceExportButton.hide(() => {
-                  es.close();
-                });
-                if (data.status === "success") {
-                  downloadWithProggress(id, new URL(startExportUrl).searchParams.get("format"));
+                if (data.status === "running") {
+                  progressText.text(data.taskName || "Running");
+                  const percentComplete = Math.floor((data.progress / data.total) * 100) + "%";
+                  progress.css("width", percentComplete);
+                  progressNumberText.text(data.progress > 0 ? data.progress + " / " + data.total + " " + (data.unit || "") : "...");
                 } else {
-                  hipanel.notify.error(`Status: ${data.status}\nMessage: ${data.errorMessage}`);
-                  resetExportUI();
+                  progress.css("width", "100%");
+                  progressNumberText.text("");
+                  progressCanceExportButton.hide(() => {
+                    es.close();
+                  });
+                  if (data.status === "success") {
+                    downloadWithProggress(id, new URL(startExportUrl).searchParams.get("format"));
+                  } else {
+                    hipanel.notify.error(`Status: ${data.status}\nMessage: ${data.errorMessage}`);
+                    resetExportUI();
+                  }
                 }
               }
+            });
+            onError((event, es) => {
+              console.log(event, es);
+              es.close();
+              resetExportUI();
             });
           });
         });
