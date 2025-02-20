@@ -266,7 +266,7 @@ abstract class AbstractExporter implements ExporterInterface
         }
         $column->value = $savedValue;
 
-        return $output;
+        return is_string($output) || $output === null ? $output : (string)$output;
     }
 
     /**
