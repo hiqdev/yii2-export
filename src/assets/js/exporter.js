@@ -1,16 +1,54 @@
 (function ($) {
 
-  $.fn.exporter = function (options = {}) {
-    const settings = $.extend({
-      progressUrl: "progress-export",
-      downloadUrl: "download-export",
-      cancelUrl: "cancel-export",
-      messages: {
-        step0: "Initialization",
-        step1: "Downloading",
-        step2: "Wait until the report is downloaded",
+  $.fn.exporter = function (methodOrOptions = {}) {
+    const methods = {
+      copy: function (text) {
+        function fallbackCopy(text) {
+          const listener = function (ev) {
+            ev.preventDefault();
+            ev.clipboardData.setData("text/plain", text);
+          };
+          document.addEventListener("copy", listener);
+          document.execCommand("copy");
+          document.removeEventListener("copy", listener);
+        }
+        if (navigator.clipboard) {
+          window.navigator.permissions.query({ name: "clipboard-write" }).then((result) => {
+            if (result.state == "granted" || result.state == "prompt") {
+              navigator.clipboard.writeText(text).then(
+                () => {
+                  hipanel.notify.success("Clipped!");
+                },
+                (e) => {
+                  hipanel.notify.error("Failed to copy to clipboard");
+                  console.error(e);
+                },
+              );
+            }
+          });
+        } else {
+          fallbackCopy(text);
+          hipanel.notify.success("Clipped!");
+        }
       },
-    }, options);
+    };
+    let settings = {};
+    if (methods[methodOrOptions]) {
+      return methods[methodOrOptions].apply(this, Array.prototype.slice.call(arguments, 1));
+    } else if (typeof methodOrOptions === "object" || !methodOrOptions) {
+      settings = $.extend({
+        progressUrl: "progress-export",
+        downloadUrl: "download-export",
+        cancelUrl: "cancel-export",
+        messages: {
+          step0: "Initialization",
+          step1: "Downloading",
+          step2: "Wait until the report is downloaded",
+        },
+      }, methodOrOptions);
+    } else {
+      $.error("Method: " + methodOrOptions + " is not found in the Export plugin!");
+    }
 
     this.each(function () {
       const bar = $("#export-progress-box");
@@ -48,7 +86,10 @@
         const id = event.target.dataset.id;
         beginExportUi(() => {
           hipanel.runProcess(startExportUrl, { id: id }, null, () => {
-            const {onMessage, onError } = hipanel.progress(`${settings.progressUrl}?id=${id}`, (es) => {
+            const {
+              onMessage,
+              onError,
+            } = hipanel.progress(`${settings.progressUrl}?id=${id}`, (es) => {
               const onPageUnload = function (e) {
                 e.preventDefault();
                 e.returnValue = "";
@@ -65,7 +106,7 @@
             });
             onMessage((event, es) => {
               const data = JSON.parse(event.data);
-              if ('errorMessage' in data && data.errorMessage) {
+              if ("errorMessage" in data && data.errorMessage) {
                 es.close();
                 hipanel.notify.error(`Status: ${data.status}\nMessage: ${data.errorMessage}`);
                 resetExportUI();
@@ -106,34 +147,7 @@
           if (this.readyState === 4 && this.status === 200) {
             const filename = "report_" + id + "." + ext;
             if (ext === "md") {
-              function copyText(text) {
-                const listener = function (ev) {
-                  ev.preventDefault();
-                  ev.clipboardData.setData("text/plain", text);
-                };
-                document.addEventListener("copy", listener);
-                document.execCommand("copy");
-                document.removeEventListener("copy", listener);
-              }
-
-              if (navigator.clipboard) {
-                window.navigator.permissions.query({ name: "clipboard-write" }).then((result) => {
-                  if (result.state == "granted" || result.state == "prompt") {
-                    navigator.clipboard.writeText(xhr.responseText).then(
-                      () => {
-                        hipanel.notify.success("Clipped!");
-                      },
-                      (e) => {
-                        hipanel.notify.error("Failed to copy to clipboard");
-                        console.error(e);
-                      },
-                    );
-                  }
-                });
-              } else {
-                copyText(xhr.responseText);
-                hipanel.notify.success("Clipped!");
-              }
+              methods.copy(xhr.responseText);
             } else {
               if (typeof window.chrome !== "undefined") {
                 // Chrome version
