@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace hiqdev\yii2\export\widgets;
 
+use Closure;
 use hipanel\helpers\Url;
 use hiqdev\yii2\export\assets\ExporterAssets;
 use hiqdev\yii2\export\exporters\ExportType;
@@ -14,14 +15,25 @@ use yii\helpers\Html;
 
 class IndexPageExportLinks extends Widget
 {
+    public array|Closure $exportVariants = [];
+
+    public function init(): void
+    {
+        if (is_array($this->exportVariants) && empty($this->exportVariants)) {
+            $this->exportVariants = $this->getExportVariants();
+        } else if (is_callable($this->exportVariants)) {
+            $this->exportVariants = call_user_func($this->exportVariants, $this->getExportVariants());
+        }
+    }
+
     public function run()
     {
         ExporterAssets::register($this->view);
-        $this->view->registerJs(/** @lang JavaScript */ "
-            (($) => {
-              $('a.export-report-link').exporter();
-            })($);
-        ");
+        $this->view->registerJs(/** @lang JavaScript */ '
+            ;(($) => {
+              $("a.export-report-link[data-export-url]").exporter();
+            })(jQuery);
+        ');
 
         return ButtonDropdown::widget([
             'label' => '<i class="fa fa-share-square-o"></i>&nbsp;' . Yii::t('hiqdev.export', 'Export'),
@@ -33,11 +45,15 @@ class IndexPageExportLinks extends Widget
         ]);
     }
 
-    protected function getItems(): array
+    private function getItems(): array
     {
         $items = [];
-        foreach ([ExportType::CSV->value => 'CSV', ExportType::TSV->value => 'TSV', ExportType::XLSX->value => 'Excel XLSX', ExportType::MD->value => 'Clipboard MD'] as $type => $label) {
-            $icon = match (ExportType::from($type)) {
+        foreach ($this->exportVariants as $type => $link) {
+            if (is_array($link)) {
+                $items[] = $link;
+                continue;
+            }
+            $icon = match (ExportType::tryFrom($type) ?? $type) {
                 ExportType::XLSX => Html::tag('i', null, ['class' => 'fa fa-fw fa-file-excel-o']),
                 ExportType::MD => Html::tag('i', null, ['class' => 'fa fa-fw fa-download']),
                 default => Html::tag('i', null, ['class' => 'fa fa-fw fa-file-code-o']),
@@ -45,12 +61,11 @@ class IndexPageExportLinks extends Widget
             $url = $this->combineUrl('start-export', $type);
             $items[] = [
                 'url' => $url,
-                'label' => $icon . $label,
+                'label' => $icon . $link,
                 'encode' => false,
                 'linkOptions' => [
                     'class' => 'export-report-link',
                     'data' => [
-//                        'id' => md5($url),
                         'id' => time(),
                         'export-url' => $url,
                     ],
@@ -75,5 +90,15 @@ class IndexPageExportLinks extends Widget
             $currentParams
         ),
             true);
+    }
+
+    private function getExportVariants(): array
+    {
+        return [
+            ExportType::CSV->value => 'CSV',
+            ExportType::TSV->value => 'TSV',
+            ExportType::XLSX->value => 'Excel XLSX',
+            ExportType::MD->value => 'Clipboard MD',
+        ];
     }
 }
