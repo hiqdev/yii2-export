@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace hiqdev\yii2\export\components;
 
@@ -14,7 +16,6 @@ use hiqdev\yii2\export\exporters\ExportType;
 use hiqdev\yii2\export\models\ExportJob;
 use hiqdev\yii2\export\models\CsvSettings;
 use hiqdev\yii2\export\models\MDSettings;
-use hiqdev\yii2\export\models\StaleExportJobException;
 use hiqdev\yii2\export\models\TsvSettings;
 use hiqdev\yii2\export\models\XlsxSettings;
 use RuntimeException;
@@ -49,11 +50,10 @@ class Exporter extends Component
             try {
                 $exporter->export($this->job);
                 $this->job->end();
-            } catch (StaleExportJobException $e) {
-                $this->job->cancel($e->getMessage());
             } catch (Exception $e) {
                 $this->job->cancel($e->getMessage());
-                Yii::error('Export: ' . $e->getMessage());
+                Yii::error('Export error: ' . $e->getMessage());
+                throw $e;
             }
         } else {
             Yii::error('Export: The export job must be STATUS_NEW. ' . $this->job->errorMessage);
