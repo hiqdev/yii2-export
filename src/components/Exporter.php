@@ -105,7 +105,7 @@ class Exporter extends Component
         $type = $action->controller->request->get('format');
         $exporter = $this->exporterFactory->build($type);
         $settings = $this->loadSettings($type);
-        $enabler = new SynchronousCountEnabler($this->getDataProvider($action), fn(GridView $grid): string => '');
+        $enabler = new SynchronousCountEnabler($this->getDataProvider($action));
         $settings?->applyTo($exporter);
         $exporter->setDataProvider($enabler->getDataProvider());
         $exporter->setGridClassName($this->guessGridClassName($action->controller));
