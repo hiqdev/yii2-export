@@ -66,7 +66,7 @@ class IndexPageExportLinks extends Widget
                 'linkOptions' => [
                     'class' => 'export-report-link',
                     'data' => [
-                        'id' => time(),
+                        'export-id' => time(),
                         'export-url' => $url,
                     ],
                 ],

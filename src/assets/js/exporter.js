@@ -56,7 +56,7 @@
       const progressText = bar.find(".progress-text").eq(0);
       const progressNumberText = bar.find(".progress-number").eq(0);
       const progressDescriptionText = bar.find(".progress-description").eq(0);
-      const progressCanceExportButton = bar.find("button").eq(0);
+      const progressCancelExportButton = bar.find("button").eq(0);
       const exportBtn = $("#export-btn");
 
       const resetExportUI = function () {
@@ -66,7 +66,7 @@
           progressDescriptionText.text("");
           exportBtn.attr("disabled", false).removeClass("disabled");
           progress.css("width", 0);
-          progressCanceExportButton.show();
+          progressCancelExportButton.show();
         });
       };
 
@@ -83,22 +83,22 @@
         }
         const startExportUrl = event.target.dataset.exportUrl;
         const cancelExportUrl = settings.cancelUrl;
-        const id = event.target.dataset.id;
+        const exportId = event.target.dataset.exportId;
         beginExportUi(() => {
-          hipanel.runProcess(startExportUrl, { id: id }, null, () => {
+          hipanel.runProcess(startExportUrl, { export_id: exportId }, null, () => {
             const {
               onMessage,
               onError,
-            } = hipanel.progress(`${settings.progressUrl}?id=${id}`, (es) => {
+            } = hipanel.progress(`${settings.progressUrl}?id=${exportId}`, (es) => {
               const onPageUnload = function (e) {
                 e.preventDefault();
                 e.returnValue = "";
                 es.close();
-                hipanel.runProcess(cancelExportUrl, { id });
+                hipanel.runProcess(cancelExportUrl, { id: exportId });
               };
               window.addEventListener("beforeunload", onPageUnload);
-              progressCanceExportButton.click(function () {
-                hipanel.runProcess(cancelExportUrl, { id });
+              progressCancelExportButton.click(function () {
+                hipanel.runProcess(cancelExportUrl, { id: exportId });
                 es.close();
                 window.removeEventListener("beforeunload", onPageUnload);
                 resetExportUI();
@@ -119,11 +119,11 @@
                 } else {
                   progress.css("width", "100%");
                   progressNumberText.text("");
-                  progressCanceExportButton.hide(() => {
+                  progressCancelExportButton.hide(() => {
                     es.close();
                   });
                   if (data.status === "success") {
-                    downloadWithProggress(id, new URL(startExportUrl).searchParams.get("format"));
+                    downloadWithProgress(exportId, new URL(startExportUrl).searchParams.get("format"));
                   } else {
                     hipanel.notify.error(`Status: ${data.status}\nMessage: ${data.errorMessage}`);
                     resetExportUI();
@@ -140,7 +140,7 @@
         });
       };
 
-      const downloadWithProggress = (id, ext) => {
+      const downloadWithProgress = (id, ext) => {
         progressText.text(settings.messages.step1);
         const xhr = $.ajaxSettings.xhr();
         xhr.onreadystatechange = function () {
