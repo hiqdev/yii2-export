@@ -32,14 +32,6 @@ class Exporter extends Component
         parent::__construct($config);
     }
 
-    public function prepareExporter(IndexAction $action, array $representationColumns): ExporterInterface
-    {
-        $exporter = $this->createExporter($action, $representationColumns);
-        $exporter->initExportOptions();
-
-        return $exporter;
-    }
-
     public function runJob(string $id, StartExportAction $action, array $representationColumns): void
     {
         $exporter = $this->prepareExporter($action, $representationColumns);
@@ -60,14 +52,22 @@ class Exporter extends Component
         }
     }
 
+    private function prepareExporter(IndexAction $action, array $representationColumns): ExporterInterface
+    {
+        $exporter = $this->createExporter($action, $representationColumns);
+        $exporter->initExportOptions();
+
+        return $exporter;
+    }
+
     public function __destruct()
     {
-        if (!$this->job->isSuccess()) {
+        if (isset($this->job) && !$this->job->isSuccess()) {
             $this->job->cancel('There was probably an internal error during Report generating. Contact the development team.');
         }
     }
 
-    public function loadSettings($type)
+    private function loadSettings($type)
     {
         $map = [
             ExportType::CSV->value => CsvSettings::class,
@@ -92,12 +92,12 @@ class Exporter extends Component
                 $controllerName . 'Controller',
                 'controllers',
             ]));
-        $girdClassName = sprintf('\%s\grid\%sGridView', $ns, $controllerName);
-        if (class_exists($girdClassName)) {
-            return $girdClassName;
+        $gridClassName = sprintf('\%s\grid\%sGridView', $ns, $controllerName);
+        if (class_exists($gridClassName)) {
+            return $gridClassName;
         }
 
-        throw new RuntimeException("ExportAction cannot find a {$girdClassName}");
+        throw new RuntimeException("ExportAction cannot find a $gridClassName");
     }
 
     private function createExporter(IndexAction $action, array $representationColumns): ExporterInterface
@@ -105,7 +105,8 @@ class Exporter extends Component
         $type = $action->controller->request->get('format');
         $exporter = $this->exporterFactory->build($type);
         $settings = $this->loadSettings($type);
-        $enabler = new SynchronousCountEnabler($this->getDataProvider($action));
+        $dp = $this->getDataProvider($action);
+        $enabler = new SynchronousCountEnabler($dp);
         $settings?->applyTo($exporter);
         $exporter->setDataProvider($enabler->getDataProvider());
         $exporter->setGridClassName($this->guessGridClassName($action->controller));

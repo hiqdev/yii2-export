@@ -197,6 +197,7 @@ abstract class AbstractExporter implements ExporterInterface
         $dp->pagination->page = 0;
         $pageCount = ceil($totalCount / $this->batchSize);
 
+        $allRequests = [];
         foreach (range(1, $pageCount) as $page) {
             $allRequests[] = $this->composeRequest($connection, $dp);
             $dp->pagination->page = $page;
@@ -213,7 +214,7 @@ abstract class AbstractExporter implements ExporterInterface
         }
         $job->setTaskName(Yii::t('hiqdev.export', 'Generating a report'))->setTotal($dp->getTotalCount())->setUnit('rows')->commit();
         foreach ($responses as $response) {
-            $data = [...$response->getData()];
+            $data = $response->getData();
             $query = $response->getRequest()->getQuery();
             $rows = [];
             $models = $query->populate($data);
