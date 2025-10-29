@@ -95,41 +95,71 @@ abstract class AbstractExporter implements ExporterInterface
     abstract protected function getWriter(): ?WriterInterface;
 
     /**
+     * Get default export sections
+     *
+     * @return array Array of section name => callable pairs
+     */
+    protected function getExportSections(): array
+    {
+        return [
+            'header' => fn() => $this->generateHeader(),
+            'body' => fn() => $this->generateBody(),
+            'footer' => fn() => $this->generateFooter(),
+        ];
+    }
+
+    /**
+     * Export data to file with flexible sections
+     *
+     * @param string $filePath Path to the output file
+     * @param array|null $sections Array of section generators (callables). If null, uses getExportSections()
+     */
+    public function exportToFile(string $filePath, ?array $sections = null): void
+    {
+        $sections = $sections ?? $this->getExportSections();
+
+        $writer = $this->getWriter();
+        $writer->openToFile($filePath);
+        $rows = [];
+
+        foreach ($sections as $sectionGenerator) {
+            $result = $sectionGenerator();
+
+            // Handle different result types: array, Generator, nested arrays
+            if ($result instanceof \Generator) {
+                foreach ($result as $row) {
+                    if (!empty($row)) {
+                        $rows[] = Row::fromValues($row);
+                    }
+                }
+            } elseif (is_array($result)) {
+                // Check if it's an array of arrays (batches from generateBody)
+                if (!empty($result) && is_array(reset($result)) && is_numeric(key($result))) {
+                    foreach ($result as $batch) {
+                        foreach ($batch as $row) {
+                            if (!empty($row)) {
+                                $rows[] = Row::fromValues($row);
+                            }
+                        }
+                    }
+                } elseif (!empty($result)) {
+                    // Single row array
+                    $rows[] = Row::fromValues($result);
+                }
+            }
+        }
+
+        $writer->addRows($rows);
+        $writer->close();
+    }
+
+    /**
      * Render file content
      */
     public function export(ExportJob $job): void
     {
         static::applyExportFormatting();
-
-        $writer = $this->getWriter();
-        $writer->openToFile($job->getSaver()->getFilePath());
-        $rows = [];
-
-        //header
-        $headerRow = $this->generateHeader();
-        if (!empty($headerRow)) {
-            $row = Row::fromValues($headerRow);
-            $rows[] = $row;
-        }
-
-        //body
-        $batches = $this->generateBody();
-        foreach ($batches as $batch) {
-            foreach ($batch as $row) {
-                $rows[] = Row::fromValues($row);
-            }
-        }
-
-        //footer
-        $footerRow = $this->generateFooter();
-        if (!empty($footerRow)) {
-            $row = Row::fromValues($footerRow);
-            $rows[] = $row;
-        }
-
-        $writer->addRows($rows);
-
-        $writer->close();
+        $this->exportToFile($job->getSaver()->getFilePath());
     }
 
     /**
@@ -286,6 +316,8 @@ abstract class AbstractExporter implements ExporterInterface
 
     public function setExportJob(?ExportJob $exportJob): void
     {
+        $exportJob->mimeType = $this->getMimeType();
+        $exportJob->extension = $this->getExportType()->value;
         $this->exportJob = $exportJob;
     }
 

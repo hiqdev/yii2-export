@@ -86,10 +86,8 @@ class ExportJob extends Model
         return $this->errorMessage;
     }
 
-    public function begin(string $mimeType, string $extension): void
+    public function begin(): void
     {
-        $this->mimeType = $mimeType;
-        $this->extension = $extension;
         $this->status = ExportStatus::RUNNING->value;
         $this->runTs = time();
         $this->storage->save();

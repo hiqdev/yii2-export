@@ -44,7 +44,7 @@ class Exporter extends Component
             return;
         }
 
-        $this->initializeJob($exportHandler);
+        $this->job->begin();
 
         try {
             $exportHandler->export($this->job);
@@ -53,11 +53,6 @@ class Exporter extends Component
             $this->handleExportError($e);
             throw $e;
         }
-    }
-
-    private function initializeJob(ExporterInterface $exportHandler): void
-    {
-        $this->job->begin($exportHandler->getMimeType(), $exportHandler->getExportType()->value);
     }
 
     private function handleInvalidJobState(): void
