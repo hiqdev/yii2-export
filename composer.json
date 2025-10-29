@@ -46,8 +46,8 @@
         }
     ],
     "require": {
-        "box/spout": "~3.3",
-        "ext-intl": "*"
+        "ext-intl": "*",
+        "openspout/openspout": "~4.32"
     },
     "require-dev": {
         "hiqdev/hidev-php": "<2.0",

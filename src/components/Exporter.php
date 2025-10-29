@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+
 namespace hiqdev\yii2\export\components;
 
 use Exception;
@@ -14,14 +15,11 @@ use hiqdev\yii2\export\exporters\ExporterFactoryInterface;
 use hiqdev\yii2\export\exporters\ExporterInterface;
 use hiqdev\yii2\export\exporters\ExportType;
 use hiqdev\yii2\export\models\ExportJob;
-use hiqdev\yii2\export\models\CsvSettings;
-use hiqdev\yii2\export\models\MDSettings;
-use hiqdev\yii2\export\models\TsvSettings;
-use hiqdev\yii2\export\models\XlsxSettings;
+use InvalidArgumentException;
 use RuntimeException;
-use yii\base\Component;
 use Yii;
-use yii\grid\GridView;
+use yii\base\Component;
+use yii\data\DataProviderInterface;
 
 class Exporter extends Component
 {
@@ -34,27 +32,48 @@ class Exporter extends Component
 
     public function runJob(string $id, StartExportAction $action, array $representationColumns): void
     {
-        $exporter = $this->prepareExporter($action, $representationColumns);
+        $exportHandler = $this->prepareExporter($action, $representationColumns);
         $this->job = ExportJob::findOrNew($id);
-        $exporter->exportJob = $this->job;
-        if ($this->job->isNew()) {
-            $this->job->begin($exporter->getMimeType(), $exporter->exportType->value);
-            try {
-                $exporter->export($this->job);
-                $this->job->end();
-            } catch (Exception $e) {
-                $this->job->cancel($e->getMessage());
-                Yii::error('Export error: ' . $e->getMessage());
-                throw $e;
-            }
-        } else {
-            Yii::error('Export: The export job must be STATUS_NEW. ' . $this->job->errorMessage);
+
+        $exportHandler->setExportJob($this->job);
+
+        if (!$this->job->isNew()) {
+            // Guard clause for invalid job state
+            $this->handleInvalidJobState();
+
+            return;
         }
+
+        $this->initializeJob($exportHandler);
+
+        try {
+            $exportHandler->export($this->job);
+            $this->job->end();
+        } catch (Exception $e) {
+            $this->handleExportError($e);
+            throw $e;
+        }
+    }
+
+    private function initializeJob(ExporterInterface $exportHandler): void
+    {
+        $this->job->begin($exportHandler->getMimeType(), $exportHandler->getExportType()->value);
+    }
+
+    private function handleInvalidJobState(): void
+    {
+        Yii::error('Export: The export job must be STATUS_NEW. ' . $this->job->errorMessage);
+    }
+
+    private function handleExportError(Exception $e): void
+    {
+        $this->job->cancel($e->getMessage());
+        Yii::error('Export error: ' . $e->getMessage());
     }
 
     private function prepareExporter(IndexAction $action, array $representationColumns): ExporterInterface
     {
-        $exporter = $this->createExporter($action, $representationColumns);
+        $exporter = $this->initializeExporter($action, $representationColumns);
         $exporter->initExportOptions();
 
         return $exporter;
@@ -67,31 +86,16 @@ class Exporter extends Component
         }
     }
 
-    private function loadSettings($type)
-    {
-        $map = [
-            ExportType::CSV->value => CsvSettings::class,
-            ExportType::TSV->value => TsvSettings::class,
-            ExportType::XLSX->value => XlsxSettings::class,
-            ExportType::MD->value => MDSettings::class,
-        ];
-
-        $settings = Yii::createObject($map[$type]);
-        if ($settings->load(Yii::$app->request->get(), '') && $settings->validate()) {
-            return $settings;
-        }
-
-        return null;
-    }
-
     private function guessGridClassName(Controller $controller): string|RuntimeException
     {
-        $controllerName = ucfirst($controller->id);
-        $ns = implode('\\',
+        $controllerName = str_replace(' ', '', ucwords(str_replace('-', ' ', $controller->id)));
+        $ns = implode(
+            '\\',
             array_diff(explode('\\', get_class($controller)), [
                 $controllerName . 'Controller',
                 'controllers',
-            ]));
+            ])
+        );
         $gridClassName = sprintf('\%s\grid\%sGridView', $ns, $controllerName);
         if (class_exists($gridClassName)) {
             return $gridClassName;
@@ -100,31 +104,75 @@ class Exporter extends Component
         throw new RuntimeException("ExportAction cannot find a $gridClassName");
     }
 
-    private function createExporter(IndexAction $action, array $representationColumns): ExporterInterface
+    private function initializeExporter(IndexAction $action, array $representationColumns): ExporterInterface
     {
-        $type = $action->controller->request->get('format');
-        $exporter = $this->exporterFactory->build($type);
-        $settings = $this->loadSettings($type);
-        $dp = $this->getDataProvider($action);
-        $enabler = new SynchronousCountEnabler($dp);
-        $settings?->applyTo($exporter);
-        $exporter->setDataProvider($enabler->getDataProvider());
+        $formatType = $this->getExportFormat($action);
+        $exporter = $this->createExporter($formatType, $representationColumns);
+        $dataProvider = $this->wrapDataProvider($action);
+
+        $exporter->setDataProvider($dataProvider);
         $exporter->setGridClassName($this->guessGridClassName($action->controller));
+
+        return $exporter;
+    }
+
+    private function getExportFormat(IndexAction $action): string
+    {
+        return $action->controller->request->get('format');
+    }
+
+    private function createExporter(string $type, array $representationColumns): ExporterInterface
+    {
+        $exporter = $this->getExporter($type);
         $exporter->setRepresentationColumns($representationColumns);
 
         return $exporter;
     }
 
+    private function wrapDataProvider(IndexAction $action): DataProviderInterface
+    {
+        $dataProvider = $this->getDataProvider($action);
+        $enabler = new SynchronousCountEnabler($dataProvider);
+
+        return $enabler->getDataProvider();
+    }
+
+    private function getExporter(string $format): ExporterInterface
+    {
+        $type = ExportType::tryFrom($format);
+
+        return $this->exporterFactory->build($type);
+    }
+
     private function getDataProvider(?IndexAction $action = null): ActiveDataProvider
     {
-        $indexAction = null;
-        if ($action && isset($action->controller->actions()['index'])) {
-            $indexActionConfig = $action->controller->actions()['index'];
-            $indexActionConfig['forceStorageFiltersApply'] = true;
-            $indexAction = Yii::createObject($indexActionConfig, ['index', $action->controller]);
-            $indexAction->beforePerform();
+        if (!$action) {
+            throw new InvalidArgumentException('Action cannot be null.');
         }
 
-        return $indexAction ? $indexAction->getDataProvider() : $action->getDataProvider();
+        $indexConfig = $this->getIndexActionConfig($action);
+
+        if ($indexConfig !== null) {
+            $indexAction = $this->createIndexAction($indexConfig, $action);
+            $indexAction->beforePerform();
+
+            return $indexAction->getDataProvider();
+        }
+
+        return $action->getDataProvider();
+    }
+
+    private function getIndexActionConfig(IndexAction $action): ?array
+    {
+        $actions = $action->controller->actions();
+
+        return $actions['index'] ?? null;
+    }
+
+    private function createIndexAction(array $config, IndexAction $action): IndexAction
+    {
+        $config['forceStorageFiltersApply'] = true;
+
+        return Yii::createObject($config, ['index', $action->controller]);
     }
 }

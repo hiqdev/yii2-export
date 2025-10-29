@@ -1,10 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
 
 namespace hiqdev\yii2\export\models;
 
 use hiqdev\yii2\export\helpers\ExportJobStorage;
 use hiqdev\yii2\export\helpers\SaveManager;
-use hiqdev\yii2\export\models\enums\ExportStatus;
 use RuntimeException;
 use Yii;
 use yii\base\Model;

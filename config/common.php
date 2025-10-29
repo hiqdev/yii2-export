@@ -13,7 +13,7 @@ use hiqdev\yii2\export\exporters\ExportType;
 return [
     'controllerMap' => [
         'exporter' => [
-            \hiqdev\yii2\export\commands\ExporterController::class
+            \hiqdev\yii2\export\commands\ExporterController::class,
         ],
     ],
     'components' => [
@@ -35,9 +35,9 @@ return [
                 ['class' => \hiqdev\yii2\export\exporters\ExporterFactory::class],
                 [
                     [
-                        ExportType::CSV->value => \hiqdev\yii2\export\exporters\CsvExporter::class,
-                        ExportType::TSV->value => \hiqdev\yii2\export\exporters\TsvExporter::class,
-                        ExportType::XLSX->value => \hiqdev\yii2\export\exporters\XlsxExporter::class,
+                        ExportType::CSV->value => \hiqdev\yii2\export\exporters\CSVExporter::class,
+                        ExportType::TSV->value => \hiqdev\yii2\export\exporters\TSVExporter::class,
+                        ExportType::XLSX->value => \hiqdev\yii2\export\exporters\XLSXExporter::class,
                         ExportType::MD->value => \hiqdev\yii2\export\exporters\MDExporter::class,
                     ],
                 ],

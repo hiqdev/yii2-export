@@ -1,23 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
+
 namespace hiqdev\yii2\export\exporters;
 
 use yii\di\Container;
 
-class ExporterFactory implements ExporterFactoryInterface
+readonly class ExporterFactory implements ExporterFactoryInterface
 {
-    protected $map;
-
-    protected $di;
-
-    public function __construct($map, Container $di)
+    public function __construct(
+        private array $map,
+        private Container $di
+    )
     {
-        $this->map = $map;
-        $this->di = $di;
     }
 
-    public function build($type): ExporterInterface
+    public function build(ExportType $type): ExporterInterface
     {
-        return $this->di->get($this->map[$type]);
+        return $this->di->get($this->map[$type->value]);
     }
 }

@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
 
 namespace hiqdev\yii2\export\actions;
 
 use hipanel\actions\ProgressAction;
-use hiqdev\yii2\export\models\enums\ExportStatus;
+use hiqdev\yii2\export\models\ExportStatus;
 use hiqdev\yii2\export\models\ExportJob;
 
 class ProgressExportAction extends ProgressAction

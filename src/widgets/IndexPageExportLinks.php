@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+
 namespace hiqdev\yii2\export\widgets;
 
 use Closure;
@@ -13,6 +14,10 @@ use yii\base\Widget;
 use yii\bootstrap\ButtonDropdown;
 use yii\helpers\Html;
 
+/**
+ *
+ * @property-read array $items
+ */
 class IndexPageExportLinks extends Widget
 {
     public array|Closure $exportVariants = [];
@@ -20,20 +25,22 @@ class IndexPageExportLinks extends Widget
     public function init(): void
     {
         if (is_array($this->exportVariants) && empty($this->exportVariants)) {
-            $this->exportVariants = $this->getExportVariants();
+            $this->exportVariants = ExportType::getLabels();
         } else if (is_callable($this->exportVariants)) {
-            $this->exportVariants = call_user_func($this->exportVariants, $this->getExportVariants());
+            $this->exportVariants = call_user_func($this->exportVariants, ExportType::getLabels());
         }
     }
 
     public function run()
     {
         ExporterAssets::register($this->view);
-        $this->view->registerJs(/** @lang JavaScript */ '
+        $this->view->registerJs(
+        /** @lang JavaScript */ '
             ;(($) => {
               $("a.export-report-link[data-export-url]").exporter();
             })(jQuery);
-        ');
+        '
+        );
 
         return ButtonDropdown::widget([
             'label' => '<i class="fa fa-share-square-o"></i>&nbsp;' . Yii::t('hiqdev.export', 'Export'),
@@ -81,24 +88,16 @@ class IndexPageExportLinks extends Widget
         $currentParams = Yii::$app->getRequest()->getQueryParams();
         $uiRoute = Yii::$app->request->pathInfo;
 
-        return Url::toRoute(array_merge(
-            [
-                $variant,
-                'format' => $type,
-                'route' => $uiRoute,
-            ],
-            $currentParams
-        ),
-            true);
-    }
-
-    private function getExportVariants(): array
-    {
-        return [
-            ExportType::CSV->value => 'CSV',
-            ExportType::TSV->value => 'TSV',
-            ExportType::XLSX->value => 'Excel XLSX',
-            ExportType::MD->value => 'Clipboard MD',
-        ];
+        return Url::toRoute(
+            array_merge(
+                [
+                    $variant,
+                    'format' => $type,
+                    'route' => $uiRoute,
+                ],
+                $currentParams
+            ),
+            true
+        );
     }
 }

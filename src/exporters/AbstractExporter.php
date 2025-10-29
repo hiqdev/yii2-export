@@ -1,12 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
 
 namespace hiqdev\yii2\export\exporters;
 
-use Box\Spout\Common\Exception\InvalidArgumentException;
-use Box\Spout\Common\Exception\IOException;
-use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
-use Box\Spout\Writer\Exception\WriterNotOpenedException;
-use Box\Spout\Writer\WriterInterface;
 use Exception;
 use hipanel\hiart\hiapi\HiapiConnectionInterface;
 use hipanel\hiart\QueryBuilder;
@@ -14,14 +12,15 @@ use hiqdev\hiart\ActiveDataProvider;
 use hiqdev\hiart\guzzle\Request;
 use hiqdev\yii2\export\models\ExportJob;
 use hiqdev\yii2\menus\grid\MenuColumn;
+use NumberFormatter;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\WriterInterface;
 use Yii;
-use yii\grid\DataColumn;
 use yii\grid\ActionColumn;
 use yii\grid\CheckboxColumn;
 use yii\grid\Column;
+use yii\grid\DataColumn;
 use yii\grid\GridView;
-use Box\Spout\Common\Exception\UnsupportedTypeException;
-use NumberFormatter;
 use yii\i18n\Formatter;
 
 abstract class AbstractExporter implements ExporterInterface
@@ -29,7 +28,6 @@ abstract class AbstractExporter implements ExporterInterface
     use GridViewTrait;
 
     public ?GridView $grid = null;
-    public ?ExportJob $exportJob = null;
     public bool $exportFooter = true;
     public int $batchSize = 2000;
     public string $target;
@@ -37,7 +35,7 @@ abstract class AbstractExporter implements ExporterInterface
     protected ?string $gridClassName = null;
     protected ActiveDataProvider $dataProvider;
     protected array $representationColumns = [];
-    protected array $settings = [];
+    private ?ExportJob $exportJob = null;
 
     public function __sleep(): array
     {
@@ -94,43 +92,23 @@ abstract class AbstractExporter implements ExporterInterface
         $this->grid = $grid;
     }
 
-    /**
-     * @return array
-     */
-    public function getSettings(): array
-    {
-        return $this->settings;
-    }
-
-    /**
-     * @param array $settings
-     */
-    public function setSettings(array $settings): void
-    {
-        $this->settings = $settings;
-    }
+    abstract protected function getWriter(): ?WriterInterface;
 
     /**
      * Render file content
-     *
-     * @throws UnsupportedTypeException
-     * @throws IOException
-     * @throws InvalidArgumentException
-     * @throws WriterNotOpenedException
      */
     public function export(ExportJob $job): void
     {
         static::applyExportFormatting();
 
-        $writer = WriterEntityFactory::createWriter($this->exportType->value);
-        $writer = $this->applySettings($writer);
+        $writer = $this->getWriter();
         $writer->openToFile($job->getSaver()->getFilePath());
         $rows = [];
 
         //header
         $headerRow = $this->generateHeader();
         if (!empty($headerRow)) {
-            $row = WriterEntityFactory::createRowFromArray($headerRow);
+            $row = Row::fromValues($headerRow);
             $rows[] = $row;
         }
 
@@ -138,14 +116,14 @@ abstract class AbstractExporter implements ExporterInterface
         $batches = $this->generateBody();
         foreach ($batches as $batch) {
             foreach ($batch as $row) {
-                $rows[] = WriterEntityFactory::createRowFromArray($row);
+                $rows[] = Row::fromValues($row);
             }
         }
 
         //footer
         $footerRow = $this->generateFooter();
         if (!empty($footerRow)) {
-            $row = WriterEntityFactory::createRowFromArray($footerRow);
+            $row = Row::fromValues($footerRow);
             $rows[] = $row;
         }
 
@@ -306,9 +284,9 @@ abstract class AbstractExporter implements ExporterInterface
         return null;
     }
 
-    protected function applySettings(WriterInterface $writer): WriterInterface
+    public function setExportJob(?ExportJob $exportJob): void
     {
-        return $writer;
+        $this->exportJob = $exportJob;
     }
 
     private function createGridView(): GridView
