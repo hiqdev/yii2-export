@@ -11,7 +11,7 @@ class CancelExportAction extends IndexAction
     public function run(): void
     {
         $id = $this->controller->request->post('id', '');
-        $job = ExportJob::findOrNew($id);
+        $job = ExportJob::findOrCreate($id);
         $job->delete();
         Yii::$app->end();
     }

@@ -33,7 +33,7 @@ class Exporter extends Component
     public function runJob(string $id, StartExportAction $action, array $representationColumns): void
     {
         $exportHandler = $this->prepareExporter($action, $representationColumns);
-        $this->job = ExportJob::findOrNew($id);
+        $this->job = ExportJob::findOrCreate($id);
 
         $exportHandler->setExportJob($this->job);
 

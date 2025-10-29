@@ -1,10 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace hiqdev\yii2\export\helpers;
 
 use hiqdev\yii2\export\models\ExportJob;
-use yii\caching\CacheInterface;
 use Yii;
+use yii\caching\CacheInterface;
 
 readonly class ExportJobStorage
 {
@@ -24,7 +26,7 @@ readonly class ExportJobStorage
 
     public function save(): bool
     {
-        return $this->storage->set($this->key, $this->job->toArray([], ['id', 'status']), 3600 * 4);
+        return $this->storage->set($this->key, $this->job->toArray(), 3600 * 4);
     }
 
     public function fetch()
