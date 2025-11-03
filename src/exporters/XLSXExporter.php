@@ -5,6 +5,8 @@ declare(strict_types=1);
 
 namespace hiqdev\yii2\export\exporters;
 
+use hipanel\grid\ColspanColumn;
+use OpenSpout\Writer\Exception\WriterNotOpenedException;
 use OpenSpout\Writer\WriterInterface;
 use OpenSpout\Writer\XLSX\Options;
 use OpenSpout\Writer\XLSX\Properties;
@@ -13,6 +15,8 @@ use Yii;
 
 class XLSXExporter extends AbstractExporter
 {
+    private ?Options $options = null;
+
     public function getMimeType(): string
     {
         return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -25,17 +29,47 @@ class XLSXExporter extends AbstractExporter
 
     protected function getWriter(): ?WriterInterface
     {
-        $options = $this->getOptions();
+        $this->initOptions();
 
-        return new Writer($options);
+        return new Writer($this->options);
     }
 
-    private function getOptions(): Options
+    private function initOptions(): void
     {
         $options = new Options();
         $options->setProperties($this->getProperties());
 
-        return $options;
+        $this->options = $options;
+    }
+
+    /**
+     * @throws WriterNotOpenedException
+     */
+    protected function beforeClose(Writer|WriterInterface $writer): void
+    {
+        if ($this->hasColspanColumn) {
+            $this->mergeColspanColumns($writer);
+        }
+    }
+
+    /**
+     * @throws WriterNotOpenedException
+     */
+    private function mergeColspanColumns(Writer|WriterInterface $writer): void
+    {
+        $topLeftColumn = 0;
+        $sheetIndex = $writer->getCurrentSheet()->getIndex();
+
+        foreach ($this->grid->columns as $column) {
+            if ($column instanceof ColspanColumn) {
+                $subColumnCount = count($column->columns);
+                $bottomRightColumn = $topLeftColumn + $subColumnCount - 1;
+                $this->options->mergeCells($topLeftColumn, 1, $bottomRightColumn, 1, $sheetIndex);
+                $topLeftColumn += $subColumnCount;
+            } else {
+                $topLeftColumn++;
+            }
+        }
     }
 
     private function getProperties(): Properties

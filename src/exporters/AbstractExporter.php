@@ -6,6 +6,8 @@ declare(strict_types=1);
 namespace hiqdev\yii2\export\exporters;
 
 use Exception;
+use Generator;
+use hipanel\grid\ColspanColumn;
 use hipanel\hiart\hiapi\HiapiConnectionInterface;
 use hipanel\hiart\QueryBuilder;
 use hiqdev\hiart\ActiveDataProvider;
@@ -14,6 +16,9 @@ use hiqdev\yii2\export\models\ExportJob;
 use hiqdev\yii2\menus\grid\MenuColumn;
 use NumberFormatter;
 use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Exception\InvalidArgumentException;
+use OpenSpout\Common\Exception\IOException;
+use OpenSpout\Writer\Exception\WriterNotOpenedException;
 use OpenSpout\Writer\WriterInterface;
 use Yii;
 use yii\grid\ActionColumn;
@@ -34,8 +39,9 @@ abstract class AbstractExporter implements ExporterInterface
     public ExportType $exportType;
     protected ?string $gridClassName = null;
     protected ActiveDataProvider $dataProvider;
+    protected bool $hasColspanColumn = false;
     protected array $representationColumns = [];
-    private ?ExportJob $exportJob = null;
+    protected ?ExportJob $exportJob = null;
 
     public function __sleep(): array
     {
@@ -90,6 +96,7 @@ abstract class AbstractExporter implements ExporterInterface
         }
         $grid->columns = $columns;
         $this->grid = $grid;
+        $this->hasColspanColumn = array_filter($columns, static fn($column) => $column instanceof ColspanColumn) !== [];
     }
 
     abstract protected function getWriter(): ?WriterInterface;
@@ -101,18 +108,23 @@ abstract class AbstractExporter implements ExporterInterface
      */
     protected function getExportSections(): array
     {
-        return [
+
+        return array_filter([
             'header' => fn() => $this->generateHeader(),
+            'colspan-sub-headers' => fn() => $this->hasColspanColumn ? $this->generateSubHeaders() : null,
             'body' => fn() => $this->generateBody(),
             'footer' => fn() => $this->generateFooter(),
-        ];
+        ]);
     }
 
     /**
-     * Export data to file with flexible sections
+     * Export data to a file with flexible sections
      *
      * @param string $filePath Path to the output file
      * @param array|null $sections Array of section generators (callables). If null, uses getExportSections()
+     * @throws IOException
+     * @throws InvalidArgumentException
+     * @throws WriterNotOpenedException
      */
     public function exportToFile(string $filePath, ?array $sections = null): void
     {
@@ -126,7 +138,7 @@ abstract class AbstractExporter implements ExporterInterface
             $result = $sectionGenerator();
 
             // Handle different result types: array, Generator, nested arrays
-            if ($result instanceof \Generator) {
+            if ($result instanceof Generator) {
                 foreach ($result as $row) {
                     if (!empty($row)) {
                         $rows[] = Row::fromValues($row);
@@ -150,7 +162,15 @@ abstract class AbstractExporter implements ExporterInterface
         }
 
         $writer->addRows($rows);
+
+        $this->beforeClose($writer);
+
         $writer->close();
+    }
+
+    protected function beforeClose(WriterInterface $writer): void
+    {
+        // Override this method to add additional logic before closing the writer
     }
 
     /**
@@ -182,6 +202,25 @@ abstract class AbstractExporter implements ExporterInterface
                 $head = $column->header;
             }
             $rows[] = $this->sanitizeRow($head);
+            if ($column instanceof ColspanColumn) {
+                $rows = array_pad($rows, count($rows) + count($column->columns) - 1, '');
+            }
+        }
+
+        return $rows;
+    }
+
+    private function generateSubHeaders(): array
+    {
+        $rows = [];
+        foreach ($this->grid->columns as $column) {
+            if (!($column instanceof ColspanColumn)) {
+                $rows[] = '';
+                continue;
+            }
+            foreach ($column->columns as $subColumn) {
+                $rows[] = $this->sanitizeRow($subColumn['label']);
+            }
         }
 
         return $rows;
@@ -250,6 +289,14 @@ abstract class AbstractExporter implements ExporterInterface
     {
         $row = [];
         foreach ($this->grid->columns as $column) {
+            if ($column instanceof ColspanColumn) {
+                foreach ($column->columns as $subColumn) {
+                    $subColumnInstance = Yii::createObject(['class' => DataColumn::class, ...$subColumn]);
+                    $value = $this->getColumnValue($model, $key, $index, $subColumnInstance);
+                    $row[] = is_string($value) ? $this->sanitizeRow($value) : $value;
+                }
+                continue;
+            }
             $value = $this->getColumnValue($model, $key, $index, $column);
             $row[] = is_string($value) ? $this->sanitizeRow($value) : $value;
         }
@@ -263,11 +310,12 @@ abstract class AbstractExporter implements ExporterInterface
             return null;
         }
         $savedValue = $column->value;
-        if (!empty($column->exportedValue)) {
+        $hasExportedValue = @isset($column->exportedValue) && !empty($column->exportedValue);
+        if ($hasExportedValue) {
             $column->value = $column->exportedValue;
             $column->content = $column->exportedValue;
         }
-        if (method_exists($column, 'getDataCellValue') && !$column->exportedValue) {
+        if (method_exists($column, 'getDataCellValue') && !$hasExportedValue) {
             $cellValue = $column->getDataCellValue($model, $key, $index);
             $output = $this->grid->formatter->format($cellValue, $column->format);
         } else {
@@ -279,7 +327,7 @@ abstract class AbstractExporter implements ExporterInterface
     }
 
     /**
-     * generate footer row array
+     * generate a footer row array
      *
      * @return array|void
      */
