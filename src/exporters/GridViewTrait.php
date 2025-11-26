@@ -15,7 +15,9 @@ trait GridViewTrait
     protected function createDataColumn($text)
     {
         if (!preg_match('/^([^:]+)(:(\w*))?(:(.*))?$/', $text, $matches)) {
-            throw new InvalidConfigException('The column must be specified in the format of "attribute", "attribute:format" or "attribute:format:label"');
+            throw new InvalidConfigException(
+                'The column must be specified in the format of "attribute", "attribute:format" or "attribute:format:label"'
+            );
         }
 
         return Yii::createObject([

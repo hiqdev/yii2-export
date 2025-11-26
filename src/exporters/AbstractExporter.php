@@ -1,27 +1,31 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
 
 namespace hiqdev\yii2\export\exporters;
 
-use Box\Spout\Common\Exception\InvalidArgumentException;
-use Box\Spout\Common\Exception\IOException;
-use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
-use Box\Spout\Writer\Exception\WriterNotOpenedException;
-use Box\Spout\Writer\WriterInterface;
 use Exception;
+use Generator;
+use hipanel\grid\ColspanColumn;
 use hipanel\hiart\hiapi\HiapiConnectionInterface;
 use hipanel\hiart\QueryBuilder;
 use hiqdev\hiart\ActiveDataProvider;
 use hiqdev\hiart\guzzle\Request;
 use hiqdev\yii2\export\models\ExportJob;
 use hiqdev\yii2\menus\grid\MenuColumn;
+use NumberFormatter;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Exception\InvalidArgumentException;
+use OpenSpout\Common\Exception\IOException;
+use OpenSpout\Writer\Exception\WriterNotOpenedException;
+use OpenSpout\Writer\WriterInterface;
 use Yii;
-use yii\grid\DataColumn;
 use yii\grid\ActionColumn;
 use yii\grid\CheckboxColumn;
 use yii\grid\Column;
+use yii\grid\DataColumn;
 use yii\grid\GridView;
-use Box\Spout\Common\Exception\UnsupportedTypeException;
-use NumberFormatter;
 use yii\i18n\Formatter;
 
 abstract class AbstractExporter implements ExporterInterface
@@ -29,15 +33,15 @@ abstract class AbstractExporter implements ExporterInterface
     use GridViewTrait;
 
     public ?GridView $grid = null;
-    public ?ExportJob $exportJob = null;
     public bool $exportFooter = true;
     public int $batchSize = 2000;
     public string $target;
     public ExportType $exportType;
     protected ?string $gridClassName = null;
     protected ActiveDataProvider $dataProvider;
+    protected bool $hasColspanColumn = false;
     protected array $representationColumns = [];
-    protected array $settings = [];
+    protected ?ExportJob $exportJob = null;
 
     public function __sleep(): array
     {
@@ -92,66 +96,90 @@ abstract class AbstractExporter implements ExporterInterface
         }
         $grid->columns = $columns;
         $this->grid = $grid;
+        $this->hasColspanColumn = array_filter($columns, static fn($column) => $column instanceof ColspanColumn) !== [];
     }
 
-    /**
-     * @return array
-     */
-    public function getSettings(): array
-    {
-        return $this->settings;
-    }
+    abstract protected function getWriter(): ?WriterInterface;
 
     /**
-     * @param array $settings
-     */
-    public function setSettings(array $settings): void
-    {
-        $this->settings = $settings;
-    }
-
-    /**
-     * Render file content
+     * Get default export sections
      *
-     * @throws UnsupportedTypeException
+     * @return array Array of section name => callable pairs
+     */
+    protected function getExportSections(): array
+    {
+
+        return array_filter([
+            'header' => fn() => $this->generateHeader(),
+            'colspan-sub-headers' => fn() => $this->hasColspanColumn ? $this->generateSubHeaders() : null,
+            'body' => fn() => $this->generateBody(),
+            'footer' => fn() => $this->generateFooter(),
+        ]);
+    }
+
+    /**
+     * Export data to a file with flexible sections
+     *
+     * @param string $filePath Path to the output file
+     * @param array|null $sections Array of section generators (callables). If null, uses getExportSections()
      * @throws IOException
      * @throws InvalidArgumentException
      * @throws WriterNotOpenedException
      */
-    public function export(ExportJob $job): void
+    public function exportToFile(string $filePath, ?array $sections = null): void
     {
-        static::applyExportFormatting();
+        $sections = $sections ?? $this->getExportSections();
 
-        $writer = WriterEntityFactory::createWriter($this->exportType->value);
-        $writer = $this->applySettings($writer);
-        $writer->openToFile($job->getSaver()->getFilePath());
+        $writer = $this->getWriter();
+        $writer->openToFile($filePath);
         $rows = [];
 
-        //header
-        $headerRow = $this->generateHeader();
-        if (!empty($headerRow)) {
-            $row = WriterEntityFactory::createRowFromArray($headerRow);
-            $rows[] = $row;
-        }
+        foreach ($sections as $sectionGenerator) {
+            $result = $sectionGenerator();
 
-        //body
-        $batches = $this->generateBody();
-        foreach ($batches as $batch) {
-            foreach ($batch as $row) {
-                $rows[] = WriterEntityFactory::createRowFromArray($row);
+            // Handle different result types: array, Generator, nested arrays
+            if ($result instanceof Generator) {
+                foreach ($result as $row) {
+                    if (!empty($row)) {
+                        $rows[] = Row::fromValues($row);
+                    }
+                }
+            } elseif (is_array($result)) {
+                // Check if it's an array of arrays (batches from generateBody)
+                if (!empty($result) && is_array(reset($result)) && is_numeric(key($result))) {
+                    foreach ($result as $batch) {
+                        foreach ($batch as $row) {
+                            if (!empty($row)) {
+                                $rows[] = Row::fromValues($row);
+                            }
+                        }
+                    }
+                } elseif (!empty($result)) {
+                    // Single row array
+                    $rows[] = Row::fromValues($result);
+                }
             }
-        }
-
-        //footer
-        $footerRow = $this->generateFooter();
-        if (!empty($footerRow)) {
-            $row = WriterEntityFactory::createRowFromArray($footerRow);
-            $rows[] = $row;
         }
 
         $writer->addRows($rows);
 
+        $this->beforeClose($writer);
+
         $writer->close();
+    }
+
+    protected function beforeClose(WriterInterface $writer): void
+    {
+        // Override this method to add additional logic before closing the writer
+    }
+
+    /**
+     * Render file content
+     */
+    public function export(ExportJob $job): void
+    {
+        static::applyExportFormatting();
+        $this->exportToFile($job->getSaver()->getFilePath());
     }
 
     /**
@@ -174,6 +202,25 @@ abstract class AbstractExporter implements ExporterInterface
                 $head = $column->header;
             }
             $rows[] = $this->sanitizeRow($head);
+            if ($column instanceof ColspanColumn) {
+                $rows = array_pad($rows, count($rows) + count($column->columns) - 1, '');
+            }
+        }
+
+        return $rows;
+    }
+
+    private function generateSubHeaders(): array
+    {
+        $rows = [];
+        foreach ($this->grid->columns as $column) {
+            if (!($column instanceof ColspanColumn)) {
+                $rows[] = '';
+                continue;
+            }
+            foreach ($column->columns as $subColumn) {
+                $rows[] = $this->sanitizeRow($subColumn['label']);
+            }
         }
 
         return $rows;
@@ -242,6 +289,14 @@ abstract class AbstractExporter implements ExporterInterface
     {
         $row = [];
         foreach ($this->grid->columns as $column) {
+            if ($column instanceof ColspanColumn) {
+                foreach ($column->columns as $subColumn) {
+                    $subColumnInstance = Yii::createObject(['class' => DataColumn::class, ...$subColumn]);
+                    $value = $this->getColumnValue($model, $key, $index, $subColumnInstance);
+                    $row[] = is_string($value) ? $this->sanitizeRow($value) : $value;
+                }
+                continue;
+            }
             $value = $this->getColumnValue($model, $key, $index, $column);
             $row[] = is_string($value) ? $this->sanitizeRow($value) : $value;
         }
@@ -255,11 +310,12 @@ abstract class AbstractExporter implements ExporterInterface
             return null;
         }
         $savedValue = $column->value;
-        if (!empty($column->exportedValue)) {
+        $hasExportedValue = @isset($column->exportedValue) && !empty($column->exportedValue);
+        if ($hasExportedValue) {
             $column->value = $column->exportedValue;
             $column->content = $column->exportedValue;
         }
-        if (method_exists($column, 'getDataCellValue') && !$column->exportedValue) {
+        if (method_exists($column, 'getDataCellValue') && !$hasExportedValue) {
             $cellValue = $column->getDataCellValue($model, $key, $index);
             $output = $this->grid->formatter->format($cellValue, $column->format);
         } else {
@@ -271,7 +327,7 @@ abstract class AbstractExporter implements ExporterInterface
     }
 
     /**
-     * generate footer row array
+     * generate a footer row array
      *
      * @return array|void
      */
@@ -306,9 +362,11 @@ abstract class AbstractExporter implements ExporterInterface
         return null;
     }
 
-    protected function applySettings(WriterInterface $writer): WriterInterface
+    public function setExportJob(?ExportJob $exportJob): void
     {
-        return $writer;
+        $exportJob->mimeType = $this->getMimeType();
+        $exportJob->extension = $this->getExportType()->value;
+        $this->exportJob = $exportJob;
     }
 
     private function createGridView(): GridView

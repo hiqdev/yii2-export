@@ -1,6 +1,9 @@
-<?php declare(strict_types=1);
+<?php
 
-namespace hiqdev\yii2\export\models\enums;
+declare(strict_types=1);
+
+
+namespace hiqdev\yii2\export\models;
 
 enum ExportStatus: string
 {

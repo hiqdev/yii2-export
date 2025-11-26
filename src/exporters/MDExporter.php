@@ -1,16 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
 
 namespace hiqdev\yii2\export\exporters;
 
 use hiqdev\yii2\export\models\ExportJob;
+use OpenSpout\Writer\WriterInterface;
 
 class MDExporter extends AbstractExporter
 {
-    public ExportType $exportType = ExportType::MD;
-
     public function getMimeType(): string
     {
         return 'text/plain';
+    }
+
+    public function getExportType(): ExportType
+    {
+        return ExportType::MD;
     }
 
     public function export(ExportJob $job): void
@@ -82,5 +89,10 @@ class MDExporter extends AbstractExporter
         }
 
         return array_map(static fn($width) => max($width, 3), $widths); // all columns must be at least 3 wide for the markdown to work
+    }
+
+    protected function getWriter(): ?WriterInterface
+    {
+        return null;
     }
 }
