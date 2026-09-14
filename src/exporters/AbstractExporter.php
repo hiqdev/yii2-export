@@ -243,6 +243,8 @@ abstract class AbstractExporter implements ExporterInterface
      *     collecting the whole export in memory, so exportToFile() can stream rows
      *     to the writer as they are produced.
      */
+    private const int EXPORT_REQUEST_TIMEOUT = 300;
+
     protected function generateBody(): Generator
     {
         $connection = Yii::$container->get(HiapiConnectionInterface::class);
@@ -250,6 +252,17 @@ abstract class AbstractExporter implements ExporterInterface
             return;
         }
 
+        $originalTimeout = $connection->config['timeout'] ?? null;
+        $connection->config['timeout'] = self::EXPORT_REQUEST_TIMEOUT;
+        try {
+            yield from $this->generateBodyRows($connection);
+        } finally {
+            $connection->config['timeout'] = $originalTimeout;
+        }
+    }
+
+    private function generateBodyRows($connection): Generator
+    {
         $dp = $this->grid->dataProvider;
         if (!$dp instanceof ActiveDataProvider) {
             throw new Exception('DataProvider must be an instance of ActiveDataProvider');
