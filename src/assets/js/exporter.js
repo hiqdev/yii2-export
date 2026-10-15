@@ -83,7 +83,9 @@
         }
         const startExportUrl = event.target.dataset.exportUrl;
         const cancelExportUrl = settings.cancelUrl;
-        const exportId = event.target.dataset.exportId;
+        // A fresh 10-digit id per click: the id rendered into the page is shared by every click,
+        // so a repeat export would hit the already finished job in cache.
+        const exportId = String(Math.floor(1e9 + Math.random() * 9e9));
         beginExportUi(() => {
           hipanel.runProcess(startExportUrl, { export_id: exportId }, null, () => {
             const {
