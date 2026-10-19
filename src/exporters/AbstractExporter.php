@@ -243,7 +243,7 @@ abstract class AbstractExporter implements ExporterInterface
      *     collecting the whole export in memory, so exportToFile() can stream rows
      *     to the writer as they are produced.
      */
-    private const int EXPORT_REQUEST_TIMEOUT = 300;
+    private const int EXPORT_REQUEST_TIMEOUT = 120;
 
     protected function generateBody(): Generator
     {

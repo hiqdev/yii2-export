@@ -43,6 +43,7 @@ class StartExportAction extends IndexAction
      */
     protected function performExport(string $id): void
     {
+        $this->cancelJobOnFatalError($id);
         try {
             $representation = $this->ensureRepresentationCollection()->getByName($this->getUiModel()->representation);
             $request = (new ExportRequestFactory())->fromStartExportAction($this, $representation->getColumns());
@@ -51,5 +52,23 @@ class StartExportAction extends IndexAction
             Yii::error('Export failed before it could start: ' . $e->getMessage(), __METHOD__);
             ExportJob::findOrCreate($id)->cancel($e->getMessage());
         }
+    }
+
+    /**
+     * try/catch cannot see fatal errors (max_execution_time, memory exhaustion): the job would stay RUNNING
+     * and the user would wait for nothing. The shutdown function still runs after them and records the cause.
+     */
+    private function cancelJobOnFatalError(string $id): void
+    {
+        register_shutdown_function(static function () use ($id): void {
+            $job = ExportJob::findOrCreate($id);
+            if ($job->isSuccess() || $job->needToTerminate()) {
+                return;
+            }
+            $error = error_get_last();
+            $reason = $error !== null ? sprintf('%s in %s:%d', $error['message'], $error['file'], $error['line']) : 'unknown reason';
+            Yii::error('Export interrupted: ' . $reason, __METHOD__);
+            $job->cancel('The export was interrupted: ' . $reason);
+        });
     }
 }

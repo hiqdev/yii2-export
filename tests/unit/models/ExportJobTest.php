@@ -107,4 +107,17 @@ final class ExportJobTest extends TestCase
         $this->assertSame(2, $cached['progress']);
         $this->assertSame(ExportStatus::SUCCESS->value, $cached['status']);
     }
+
+    public function testRunningJobBecomesStaleOnlyAfterTimeout(): void
+    {
+        $job = new ExportJob(['id' => $this->freshId()]);
+        $job->begin();
+        $this->assertFalse($job->isStale(60));
+
+        $job->updateTs = time() - 61;
+        $this->assertTrue($job->isStale(60));
+
+        $job->end();
+        $this->assertFalse($job->isStale(60), 'a finished job is never stale');
+    }
 }

@@ -16,6 +16,7 @@ class ExportJob extends Model
     public ?int $runTs = null;
     public ?int $createTs = null;
     public ?int $finishTs = null;
+    public ?int $updateTs = null;
     public ?string $errorMessage = null;
     public int $progress = 0;
     public int $total = 0;
@@ -116,6 +117,17 @@ class ExportJob extends Model
     public function isSuccess(): bool
     {
         return $this->status === ExportStatus::SUCCESS->value;
+    }
+
+    /**
+     * A RUNNING job that has not been saved for $seconds belongs to a process that is gone
+     * (killed by php-fpm request_terminate_timeout, OOM-killer, restart): nobody will ever finish it.
+     */
+    public function isStale(int $seconds): bool
+    {
+        return $this->status === ExportStatus::RUNNING->value
+            && $this->updateTs !== null
+            && time() - $this->updateTs > $seconds;
     }
 
     public function needToTerminate(): bool

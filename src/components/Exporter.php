@@ -81,7 +81,8 @@ class Exporter extends Component
 
     public function __destruct()
     {
-        if (isset($this->job) && !$this->job->isSuccess()) {
+        // a job that already ended (e.g. cancelled with the real error) must keep its own message
+        if (isset($this->job) && !$this->job->needToTerminate()) {
             $this->job->cancel('There was probably an internal error during Report generating. Contact the development team.');
         }
     }

@@ -26,6 +26,8 @@ readonly class ExportJobStorage
 
     public function save(): bool
     {
+        $this->job->updateTs = time();
+
         return $this->storage->set($this->key, $this->job->toArray(), 3600 * 4);
     }
 

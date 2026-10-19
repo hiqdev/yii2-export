@@ -58,8 +58,15 @@
       const progressDescriptionText = bar.find(".progress-description").eq(0);
       const progressCancelExportButton = bar.find("button").eq(0);
       const exportBtn = $("#export-btn");
+      // The server gives up on a single HIAPI request after 120s (see AbstractExporter::EXPORT_REQUEST_TIMEOUT),
+      // so a job that has not changed for longer than that is dead, and the user must be told about it.
+      const STALL_TIMEOUT_MS = 180000;
+      let stallTimer = null;
+      let lastFrame = null;
 
       const resetExportUI = function () {
+        clearTimeout(stallTimer);
+        lastFrame = null;
         bar.hide(500, () => {
           progressText.text("");
           progressNumberText.text("");
@@ -76,6 +83,16 @@
         bar.show(500, () => callback());
       };
 
+      const armStallTimer = (exportId, getEventSource) => {
+        clearTimeout(stallTimer);
+        stallTimer = setTimeout(() => {
+          getEventSource()?.close();
+          hipanel.runProcess(settings.cancelUrl, { id: exportId });
+          hipanel.notify.error("The export did not make any progress for several minutes and was stopped. Please try again or narrow the filters.");
+          resetExportUI();
+        }, STALL_TIMEOUT_MS);
+      };
+
       const startExport = (event) => {
         event.preventDefault();
         if (!window.EventSource) {
@@ -86,12 +103,15 @@
         // A fresh 10-digit id per click: the id rendered into the page is shared by every click,
         // so a repeat export would hit the already finished job in cache.
         const exportId = String(Math.floor(1e9 + Math.random() * 9e9));
+        let activeEventSource = null;
         beginExportUi(() => {
+          armStallTimer(exportId, () => activeEventSource);
           hipanel.runProcess(startExportUrl, { export_id: exportId }, null, () => {
             const {
               onMessage,
               onError,
             } = hipanel.progress(`${settings.progressUrl}?id=${exportId}`, (es) => {
+              activeEventSource = es;
               const onPageUnload = function (e) {
                 e.preventDefault();
                 e.returnValue = "";
@@ -107,6 +127,10 @@
               });
             });
             onMessage((event, es) => {
+              if (event.data !== lastFrame) {
+                lastFrame = event.data;
+                armStallTimer(exportId, () => activeEventSource);
+              }
               const data = JSON.parse(event.data);
               if ("errorMessage" in data && data.errorMessage) {
                 es.close();
@@ -121,6 +145,7 @@
                 } else {
                   progress.css("width", "100%");
                   progressNumberText.text("");
+                  clearTimeout(stallTimer);
                   progressCancelExportButton.hide(() => {
                     es.close();
                   });
