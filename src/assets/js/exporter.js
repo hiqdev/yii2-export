@@ -139,9 +139,9 @@
               } else {
                 if (data.status === "running") {
                   progressText.text(data.taskName || "Running");
-                  const percentComplete = Math.floor((data.progress / data.total) * 100) + "%";
-                  progress.css("width", percentComplete);
-                  progressNumberText.text(data.progress > 0 ? data.progress + " / " + data.total + " " + (data.unit || "") : "...");
+                  const hasTotal = data.total > 0;
+                  progress.css("width", hasTotal ? Math.floor((data.progress / data.total) * 100) + "%" : 0);
+                  progressNumberText.text(hasTotal ? data.progress + " / " + data.total + " " + (data.unit || "") : "...");
                 } else {
                   progress.css("width", "100%");
                   progressNumberText.text("");
