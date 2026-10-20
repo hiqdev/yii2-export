@@ -2,6 +2,7 @@
 
 namespace hiqdev\yii2\export\tests\unit\models;
 
+use hiqdev\yii2\export\models\ExportCancelledException;
 use hiqdev\yii2\export\models\ExportJob;
 use hiqdev\yii2\export\models\ExportStatus;
 use PHPUnit\Framework\TestCase;
@@ -119,5 +120,32 @@ final class ExportJobTest extends TestCase
 
         $job->end();
         $this->assertFalse($job->isStale(60), 'a finished job is never stale');
+    }
+
+    public function testCommitStopsWhenAnotherProcessCancelledTheJob(): void
+    {
+        $id = $this->freshId();
+        $running = new ExportJob(['id' => $id]);
+        $running->begin();
+
+        ExportJob::findOrCreate($id)->cancel(ExportJob::CANCELLED_MESSAGE);
+
+        $this->expectException(ExportCancelledException::class);
+        $running->increaseProgress()->commit();
+    }
+
+    public function testCancelledJobIsNotOverwrittenByTheRunningOne(): void
+    {
+        $id = $this->freshId();
+        $running = new ExportJob(['id' => $id]);
+        $running->begin();
+        ExportJob::findOrCreate($id)->cancel(ExportJob::CANCELLED_MESSAGE);
+
+        try {
+            $running->commit();
+        } catch (ExportCancelledException) {
+        }
+
+        $this->assertSame(ExportStatus::CANCEL->value, Yii::$app->cache->get(['export-job', $id])['status']);
     }
 }

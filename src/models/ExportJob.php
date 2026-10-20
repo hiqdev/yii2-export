@@ -13,6 +13,8 @@ use yii\base\Model;
 
 class ExportJob extends Model
 {
+    public const string CANCELLED_MESSAGE = 'The export was cancelled.';
+
     public ?int $runTs = null;
     public ?int $createTs = null;
     public ?int $finishTs = null;
@@ -210,6 +212,7 @@ class ExportJob extends Model
 
     public function commit(): self
     {
+        $this->throwIfCancelledMeanwhile();
         $this->storage->save();
         $this->lastCommitAt = microtime(true);
         $this->rowsSinceCommit = 0;
@@ -239,6 +242,18 @@ class ExportJob extends Model
     }
 
     // Private Helper Methods
+    /**
+     * cancel-export runs in another process and only changes the stored job,
+     * so the running exporter has to look there, or it would overwrite the cancellation on its next save.
+     */
+    private function throwIfCancelledMeanwhile(): void
+    {
+        $stored = $this->storage->fetch();
+        if ($this->status !== ExportStatus::CANCEL->value && ($stored['status'] ?? null) === ExportStatus::CANCEL->value) {
+            throw new ExportCancelledException(self::CANCELLED_MESSAGE);
+        }
+    }
+
     private function initializeStorageAndSaver(): void
     {
         $this->saver = new SaveManager($this);

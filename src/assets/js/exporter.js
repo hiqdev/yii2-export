@@ -119,7 +119,7 @@
                 hipanel.runProcess(cancelExportUrl, { id: exportId });
               };
               window.addEventListener("beforeunload", onPageUnload);
-              progressCancelExportButton.click(function () {
+              progressCancelExportButton.off("click").on("click", function () {
                 hipanel.runProcess(cancelExportUrl, { id: exportId });
                 es.close();
                 window.removeEventListener("beforeunload", onPageUnload);

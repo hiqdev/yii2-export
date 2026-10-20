@@ -12,7 +12,9 @@ class CancelExportAction extends IndexAction
     {
         $id = $this->controller->request->post('id', '');
         $job = ExportJob::findOrCreate($id);
-        $job->delete();
+        if (!$job->needToTerminate()) {
+            $job->cancel(ExportJob::CANCELLED_MESSAGE);
+        }
         Yii::$app->end();
     }
 }

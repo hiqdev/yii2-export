@@ -6,6 +6,7 @@ use Exception;
 use hiqdev\yii2\export\exporters\ExporterFactoryInterface;
 use hiqdev\yii2\export\exporters\ExporterInterface;
 use hiqdev\yii2\export\exporters\ExportType;
+use hiqdev\yii2\export\models\ExportCancelledException;
 use hiqdev\yii2\export\models\ExportJob;
 use Yii;
 use yii\base\Component;
@@ -45,6 +46,9 @@ class Exporter extends Component
         try {
             $exportHandler->export($this->job);
             $this->job->end();
+        } catch (ExportCancelledException $e) {
+            $this->job->cancel($e->getMessage());
+            $this->job->getSaver()->delete();
         } catch (Exception $e) {
             $this->handleExportError($e);
             throw $e;
