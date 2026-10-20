@@ -31,7 +31,7 @@ abstract class AbstractExporter implements ExporterInterface
 
     public ?GridView $grid = null;
     public bool $exportFooter = true;
-    public int $batchSize = 1000;
+    public int $batchSize = 500;
     public string $target;
     public ExportType $exportType;
     protected ?string $gridClassName = null;
