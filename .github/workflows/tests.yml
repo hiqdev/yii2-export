@@ -1,0 +1,27 @@
+name: tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+    name: PHP 8.5
+    env:
+      # hipanel-core (dev dependency) requires this package as dev-master
+      COMPOSER_ROOT_VERSION: dev-master
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: intl
+          tools: composer:v2
+          coverage: none
+      - name: Composer install
+        run: |
+          for i in 1 2 3; do composer install -n --prefer-dist --no-progress && exit 0; sleep 10; done
+          exit 1
+      - run: vendor/bin/phpunit

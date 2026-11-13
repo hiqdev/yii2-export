@@ -4,9 +4,6 @@
 
 [![Latest Stable Version](https://poser.pugx.org/hiqdev/yii2-export/v/stable)](https://packagist.org/packages/hiqdev/yii2-export)
 [![Total Downloads](https://poser.pugx.org/hiqdev/yii2-export/downloads)](https://packagist.org/packages/hiqdev/yii2-export)
-[![Build Status](https://img.shields.io/travis/hiqdev/yii2-export.svg)](https://travis-ci.org/hiqdev/yii2-export)
-[![Scrutinizer Code Coverage](https://img.shields.io/scrutinizer/coverage/g/hiqdev/yii2-export.svg)](https://scrutinizer-ci.com/g/hiqdev/yii2-export/)
-[![Scrutinizer Code Quality](https://img.shields.io/scrutinizer/g/hiqdev/yii2-export.svg)](https://scrutinizer-ci.com/g/hiqdev/yii2-export/)
 
 Provides data exporting facilities:
 

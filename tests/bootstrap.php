@@ -12,8 +12,12 @@ error_reporting(E_ALL);
 
 defined('YII_ENV') || define('YII_ENV', 'test');
 defined('YII_DEBUG') || define('YII_DEBUG', true);
+// Let PHPUnit, not Yii, handle PHP errors and deprecations (some come from dependencies).
+defined('YII_ENABLE_ERROR_HANDLER') || define('YII_ENABLE_ERROR_HANDLER', false);
 
-$appRoot = dirname(__DIR__, 4); // vendor/hiqdev/yii2-export/tests -> app root
+// Standalone checkout (own vendor/) or installed into an app
+// (vendor/hiqdev/yii2-export/tests -> app root).
+$appRoot = is_file(dirname(__DIR__) . '/vendor/autoload.php') ? dirname(__DIR__) : dirname(__DIR__, 4);
 
 require $appRoot . '/vendor/autoload.php';
 require $appRoot . '/vendor/yiisoft/yii2/Yii.php';
